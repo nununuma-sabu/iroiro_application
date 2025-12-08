@@ -180,8 +180,32 @@ input[type="radio"]:checked::before {
     font-size: 1rem;
     font-weight: bold;
     color: white;
-    background-color: #71c4e2;
-    border: 2px solid #2a6f8a;
+    /* ベースカラー */
+    background-color: #71c4e2; 
+    border: 2px solid #2a6f8a; 
     cursor: pointer;
     border-radius: 4px;
+    
+    /* トランジションを追加して色の変化を滑らかにする */
+    transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease;
+}
+
+/* 1. マウスオーバー時 (ホバー) */
+.generate-button:hover {
+    background-color: #55a8c9; /* ベースより少し濃い色 */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* 2. フォーカス時 (キーボード操作) */
+.generate-button:focus {
+    /* デフォルトのフォーカスアウトラインをリセットし、カスタムのアウトラインを設定 */
+    outline: none; 
+    box-shadow: 0 0 0 3px rgba(42, 111, 138, 0.5); /* 濃い青の半透明の枠線 */
+}
+
+/* 3. 押下時 (アクティブ) */
+.generate-button:active {
+    background-color: #3f90b0; /* さらに濃い色 */
+    transform: translateY(1px); /* わずかに下に移動させて「押し込み感」を出す */
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
