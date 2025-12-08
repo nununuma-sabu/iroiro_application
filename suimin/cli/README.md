@@ -21,3 +21,17 @@ Pythonを用いて**ピンクノイズ（1/f ノイズ）**のWAVファイルを
 
 ```bash
 pip install numpy
+
+## 基本的な実行
+
+引数を指定せずに実行すると、デフォルト設定（10分間、音量0.3、ステレオ）で `pink_noise.wav` が生成されます。
+
+```bash
+python pink_noise_generator.py
+
+## ヘルプの表示
+利用可能なオプションの一覧を確認できます。
+
+```bash
+python pink_noise_generator.py --help
+
