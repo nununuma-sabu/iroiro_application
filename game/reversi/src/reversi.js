@@ -267,7 +267,7 @@ class Reversi {
                 roleSelect.value = "1";
             const aiModeSelect = document.getElementById('ai-mode');
             if (aiModeSelect)
-                aiModeSelect.value = "random"; // 思考もリセット時にランダムに戻す
+                aiModeSelect.value = "random";
             this.startNewGameFromUI();
         };
         const roleSelect = document.getElementById('role-select');
