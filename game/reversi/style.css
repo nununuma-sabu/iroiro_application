@@ -15,6 +15,20 @@ body {
 
 .container { text-align: center; }
 
+.controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    align-items: center;
+    margin: 12px 0 18px;
+}
+
+.controls select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+}
+
 .info { margin-bottom: 20px; font-size: 1.2rem; }
 
 .board {

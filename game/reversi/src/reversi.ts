@@ -6,18 +6,53 @@ class Reversi {
     private currentPlayer: Player = 1;
     private readonly size = 8;
 
+    private humanPlayer: Player = 1; // デフォルト: 先手（黒）
+    private cpuPlayer: Player = 2;
+
+    // 1手でも進んだら、ロール（先手/後手）変更をロックする
+    private roleLocked = false;
+
+    // CPU思考中にリセット等が走っても、古い非同期処理が盤面を触らないようにする
+    private gameId = 0;
+
     constructor() {
-        this.init();
         this.setupEventListeners();
+
+        // 初期UI（先手/後手）を読み取り、ゲーム開始
+        this.startNewGameFromUI();
     }
 
-    private init() {
+    private setRoleSelectEnabled(enabled: boolean) {
+        const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
+        if (!roleSelect) return;
+        roleSelect.disabled = !enabled;
+        roleSelect.title = enabled ? '' : 'ゲーム中は変更できません（リセットで変更できます）';
+    }
+
+    private initBoard() {
         this.board = Array.from({ length: this.size }, () => Array(this.size).fill(0));
         // 初期配置
         this.board[3][3] = 2; this.board[3][4] = 1;
         this.board[4][3] = 1; this.board[4][4] = 2;
-        this.currentPlayer = 1;
+        this.currentPlayer = 1; // 黒が先手
+    }
+
+    private startNewGameFromUI() {
+        this.gameId++;
+        this.roleLocked = false;
+        this.setRoleSelectEnabled(true);
+
+        // UIが無い/読めない場合はデフォルト（先手）
+        const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
+        const value = roleSelect?.value;
+        this.humanPlayer = value === '2' ? 2 : 1;
+        this.cpuPlayer = this.humanPlayer === 1 ? 2 : 1;
+
+        this.initBoard();
         this.render();
+
+        // 後手（白）を選んだ場合は、CPU（黒）が最初に着手する
+        void this.processTurn(this.gameId);
     }
 
     // 8方向の定義
@@ -55,25 +90,32 @@ class Reversi {
     }
 
     private async handleMove(r: number, c: number) {
-        if (this.currentPlayer !== 1) return; // 黒（プレイヤー）の番のみ受付
+        if (this.currentPlayer !== this.humanPlayer) return; // 人間の番のみ受付
 
-        const flips = this.getFlips(r, c, 1);
+        const myGameId = this.gameId;
+        const flips = this.getFlips(r, c, this.humanPlayer);
         if (flips.length === 0) return;
 
         this.executeMove(r, c, flips);
-        
-        // CPUのターン
-        await this.processTurn();
+
+        // CPUのターン（必要なら）
+        await this.processTurn(myGameId);
     }
 
-    private executeMove(r: number, c: number, flips: {r: number, c: number}[]) {
+    private executeMove(r: number, c: number, flips: { r: number, c: number }[]) {
+        if (!this.roleLocked) {
+            this.roleLocked = true;
+            this.setRoleSelectEnabled(false);
+        }
         this.board[r][c] = this.currentPlayer;
         flips.forEach(f => this.board[f.r][f.c] = this.currentPlayer);
         this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
         this.render();
     }
 
-    private async processTurn() {
+    private async processTurn(gameId: number) {
+        if (gameId !== this.gameId) return;
+
         const validMoves = this.getValidMoves(this.currentPlayer);
 
         if (validMoves.length === 0) {
@@ -85,25 +127,32 @@ class Reversi {
             this.showMessage(`${this.currentPlayer === 1 ? '黒' : '白'}はパスです`);
             this.currentPlayer = this.currentPlayer === 1 ? 2 : 1;
             this.render();
-            if (this.currentPlayer === 2) await this.cpuMove();
+
+            if (this.currentPlayer === this.cpuPlayer) {
+                await new Promise(resolve => setTimeout(resolve, 600));
+                await this.cpuMove(gameId);
+            }
             return;
         }
 
-        if (this.currentPlayer === 2) {
+        if (this.currentPlayer === this.cpuPlayer) {
             await new Promise(resolve => setTimeout(resolve, 600)); // CPUの思考時間
-            await this.cpuMove();
+            await this.cpuMove(gameId);
         }
     }
 
-    private async cpuMove() {
-        const moves = this.getValidMoves(2);
+    private async cpuMove(gameId: number) {
+        if (gameId !== this.gameId) return;
+        if (this.currentPlayer !== this.cpuPlayer) return;
+
+        const moves = this.getValidMoves(this.cpuPlayer);
         if (moves.length > 0) {
             // ランダムに選択（ここを将来AIに！）
             const move = moves[Math.floor(Math.random() * moves.length)];
-            const flips = this.getFlips(move.r, move.c, 2);
+            const flips = this.getFlips(move.r, move.c, this.cpuPlayer);
             this.executeMove(move.r, move.c, flips);
         }
-        await this.processTurn();
+        await this.processTurn(gameId);
     }
 
     private render() {
@@ -111,8 +160,10 @@ class Reversi {
         boardEl.innerHTML = '';
         let bCount = 0, wCount = 0;
 
-        // 置ける場所（合法手）をハイライトするためのセット
-        const validMoves = this.getValidMoves(this.currentPlayer);
+        // 置ける場所（合法手）をハイライトするためのセット（人間の番だけ）
+        const validMoves = this.currentPlayer === this.humanPlayer
+            ? this.getValidMoves(this.currentPlayer)
+            : [];
         const validMoveSet = new Set(validMoves.map(m => `${m.r},${m.c}`));
 
         this.board.forEach((row, r) => {
@@ -136,7 +187,9 @@ class Reversi {
             });
         });
 
-        document.getElementById('turn-display')!.innerText = this.currentPlayer === 1 ? '黒' : '白';
+        const turnText = this.currentPlayer === 1 ? '黒' : '白';
+        const who = this.currentPlayer === this.humanPlayer ? 'あなた' : 'CPU';
+        document.getElementById('turn-display')!.innerText = `${turnText}（${who}）`;
         document.getElementById('score')!.innerText = `黒: ${bCount} | 白: ${wCount}`;
     }
 
@@ -147,7 +200,12 @@ class Reversi {
     }
 
     private setupEventListeners() {
-        document.getElementById('reset-btn')!.onclick = () => this.init();
+        document.getElementById('reset-btn')!.onclick = () => this.startNewGameFromUI();
+
+        const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
+        if (roleSelect) {
+            roleSelect.onchange = () => this.startNewGameFromUI();
+        }
     }
 }
 

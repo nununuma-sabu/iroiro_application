@@ -2,12 +2,21 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>TypeScript Reversi</title>
+    <title>Reversi!!!!!</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="container">
-        <h1>Reversi 😎</h1>
+        <h1>Reversi!!!!!</h1>
+
+        <div class="controls">
+            <label for="role-select">あなたの手番:</label>
+            <select id="role-select">
+                <option value="1" selected>先手（黒）</option>
+                <option value="2">後手（白）</option>
+            </select>
+        </div>
+
         <div class="info">
             <div id="status">ターンのプレイヤー: <span id="turn-display">黒</span></div>
             <div id="score">黒: 2 | 白: 2</div>
