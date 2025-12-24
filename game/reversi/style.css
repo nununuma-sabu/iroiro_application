@@ -39,6 +39,7 @@ body {
     background-color: var(--line-color);
     border: 5px solid var(--line-color);
     margin: 0 auto;
+    width: fit-content; /* グリッドの幅に外枠を合わせる */
 }
 
 .cell {

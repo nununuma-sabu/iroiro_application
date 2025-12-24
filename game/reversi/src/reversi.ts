@@ -21,15 +21,11 @@ class Reversi {
         [100, -20, 10,  5,  5, 10, -20, 100]
     ];
 
-    // 1手でも進んだら、ロール（先手/後手）変更をロックする
     private roleLocked = false;
-
-    // CPU思考中にリセット等が走っても、古い非同期処理が盤面を触らないようにする
     private gameId = 0;
 
     constructor() {
         this.setupEventListeners();
-        // 初期UI（先手/後手）を読み取り、ゲーム開始
         this.startNewGameFromUI();
     }
 
@@ -42,10 +38,9 @@ class Reversi {
 
     private initBoard() {
         this.board = Array.from({ length: this.size }, () => Array(this.size).fill(0));
-        // 初期配置
         this.board[3][3] = 2; this.board[3][4] = 1;
         this.board[4][3] = 1; this.board[4][4] = 2;
-        this.currentPlayer = 1; // 黒が先手
+        this.currentPlayer = 1;
     }
 
     private startNewGameFromUI() {
@@ -60,15 +55,13 @@ class Reversi {
 
         this.initBoard();
         this.render();
-
-        // 後手（白）を選んだ場合は、CPU（黒）が最初に着手する
         void this.processTurn(this.gameId);
     }
 
     private directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
-    private getFlips(r: number, c: number, player: Player): {r: number, c: number}[] {
-        if (this.board[r][c] !== 0) return [];
+    private getFlips(r: number, c: number, player: Player, targetBoard: Cell[][] = this.board): {r: number, c: number}[] {
+        if (targetBoard[r][c] !== 0) return [];
         const opponent = player === 1 ? 2 : 1;
         let totalFlips: {r: number, c: number}[] = [];
 
@@ -76,22 +69,22 @@ class Reversi {
             let temp: {r: number, c: number}[] = [];
             let nr = r + dr, nc = c + dc;
 
-            while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && this.board[nr][nc] === opponent) {
+            while (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && targetBoard[nr][nc] === opponent) {
                 temp.push({r: nr, c: nc});
                 nr += dr; nc += dc;
             }
-            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && this.board[nr][nc] === player) {
+            if (nr >= 0 && nr < 8 && nc >= 0 && nc < 8 && targetBoard[nr][nc] === player) {
                 totalFlips = totalFlips.concat(temp);
             }
         }
         return totalFlips;
     }
 
-    private getValidMoves(player: Player) {
+    private getValidMoves(player: Player, targetBoard: Cell[][] = this.board) {
         const moves: {r: number, c: number}[] = [];
         for (let r = 0; r < 8; r++) {
             for (let c = 0; c < 8; c++) {
-                if (this.getFlips(r, c, player).length > 0) moves.push({r, c});
+                if (this.getFlips(r, c, player, targetBoard).length > 0) moves.push({r, c});
             }
         }
         return moves;
@@ -99,7 +92,6 @@ class Reversi {
 
     private async handleMove(r: number, c: number) {
         if (this.currentPlayer !== this.humanPlayer) return;
-
         const myGameId = this.gameId;
         const flips = this.getFlips(r, c, this.humanPlayer);
         if (flips.length === 0) return;
@@ -121,7 +113,6 @@ class Reversi {
 
     private async processTurn(gameId: number) {
         if (gameId !== this.gameId) return;
-
         const validMoves = this.getValidMoves(this.currentPlayer);
 
         if (validMoves.length === 0) {
@@ -148,18 +139,26 @@ class Reversi {
     }
 
     private async cpuMove(gameId: number) {
-        if (gameId !== this.gameId) return;
-        if (this.currentPlayer !== this.cpuPlayer) return;
+        if (gameId !== this.gameId || this.currentPlayer !== this.cpuPlayer) return;
 
         const moves = this.getValidMoves(this.cpuPlayer);
         if (moves.length === 0) return;
 
-        // HTML側のセレクトボックスからAIモードを取得
         const aiMode = (document.getElementById('ai-mode') as HTMLSelectElement)?.value || 'random';
         let selectedMove = moves[0];
 
-        if (aiMode === 'eval') {
-            // 評価関数モード：各候補手をシミュレーションして最高スコアの手を選択
+        if (aiMode === 'minimax') {
+            let bestScore = -Infinity;
+            for (const move of moves) {
+                const nextBoard = this.simulateMove(this.board, move.r, move.c, this.cpuPlayer);
+                // 深さ3まで探索（自分・相手・自分）
+                const score = this.minimax(nextBoard, 3, -Infinity, Infinity, false, this.cpuPlayer);
+                if (score > bestScore) {
+                    bestScore = score;
+                    selectedMove = move;
+                }
+            }
+        } else if (aiMode === 'eval') {
             let maxScore = -Infinity;
             for (const move of moves) {
                 const score = this.evaluateMove(move.r, move.c, this.cpuPlayer);
@@ -169,7 +168,6 @@ class Reversi {
                 }
             }
         } else {
-            // ランダムモード
             selectedMove = moves[Math.floor(Math.random() * moves.length)];
         }
 
@@ -178,27 +176,61 @@ class Reversi {
         await this.processTurn(gameId);
     }
 
-    // 特定の座標に石を置いた場合の盤面全体の評価値を計算
-    private evaluateMove(r: number, c: number, player: Player): number {
-        const flips = this.getFlips(r, c, player);
-        // 盤面をディープコピーしてシミュレーション
-        const tempBoard = this.board.map(row => [...row]);
-        tempBoard[r][c] = player;
-        flips.forEach(f => tempBoard[f.r][f.c] = player);
+    private minimax(board: Cell[][], depth: number, alpha: number, beta: number, isMax: boolean, ai: Player): number {
+        const opponent = ai === 1 ? 2 : 1;
+        const currentPlayer = isMax ? ai : opponent;
+        const moves = this.getValidMoves(currentPlayer, board);
 
+        if (depth === 0 || moves.length === 0) {
+            return this.evaluateBoard(board, ai);
+        }
+
+        if (isMax) {
+            let maxEval = -Infinity;
+            for (const m of moves) {
+                const next = this.simulateMove(board, m.r, m.c, currentPlayer);
+                const ev = this.minimax(next, depth - 1, alpha, beta, false, ai);
+                maxEval = Math.max(maxEval, ev);
+                alpha = Math.max(alpha, ev);
+                if (beta <= alpha) break;
+            }
+            return maxEval;
+        } else {
+            let minEval = Infinity;
+            for (const m of moves) {
+                const next = this.simulateMove(board, m.r, m.c, currentPlayer);
+                const ev = this.minimax(next, depth - 1, alpha, beta, true, ai);
+                minEval = Math.min(minEval, ev);
+                beta = Math.min(beta, ev);
+                if (beta <= alpha) break;
+            }
+            return minEval;
+        }
+    }
+
+    private simulateMove(board: Cell[][], r: number, c: number, player: Player): Cell[][] {
+        const nextBoard = board.map(row => [...row]);
+        const flips = this.getFlips(r, c, player, board);
+        nextBoard[r][c] = player;
+        flips.forEach(f => nextBoard[f.r][f.c] = player);
+        return nextBoard;
+    }
+
+    private evaluateBoard(board: Cell[][], player: Player): number {
         let score = 0;
+        const opponent = player === 1 ? 2 : 1;
         for (let i = 0; i < 8; i++) {
             for (let j = 0; j < 8; j++) {
-                if (tempBoard[i][j] === player) {
-                    // 自分の石がある場所の重みを加算
-                    score += this.weightTable[i][j];
-                } else if (tempBoard[i][j] !== 0) {
-                    // 相手の石がある場所の重みを減算
-                    score -= this.weightTable[i][j];
-                }
+                if (board[i][j] === player) score += this.weightTable[i][j];
+                else if (board[i][j] === opponent) score -= this.weightTable[i][j];
             }
         }
         return score;
+    }
+
+    private evaluateMove(r: number, c: number, player: Player): number {
+        const tempBoard = this.simulateMove(this.board, r, c, player);
+        return this.evaluateBoard(tempBoard, player);
     }
 
     private render() {
@@ -206,9 +238,7 @@ class Reversi {
         boardEl.innerHTML = '';
         let bCount = 0, wCount = 0;
 
-        const validMoves = this.currentPlayer === this.humanPlayer
-            ? this.getValidMoves(this.currentPlayer)
-            : [];
+        const validMoves = this.currentPlayer === this.humanPlayer ? this.getValidMoves(this.currentPlayer) : [];
         const validMoveSet = new Set(validMoves.map(m => `${m.r},${m.c}`));
 
         this.board.forEach((row, r) => {
@@ -216,11 +246,7 @@ class Reversi {
                 const cellEl = document.createElement('div');
                 cellEl.className = 'cell';
                 cellEl.onclick = () => this.handleMove(r, c);
-
-                // 有効な着手箇所をハイライト
-                if (cell === 0 && validMoveSet.has(`${r},${c}`)) {
-                    cellEl.classList.add('valid-move');
-                }
+                if (cell === 0 && validMoveSet.has(`${r},${c}`)) cellEl.classList.add('valid-move');
 
                 if (cell !== 0) {
                     const piece = document.createElement('div');
@@ -247,9 +273,7 @@ class Reversi {
     private setupEventListeners() {
         document.getElementById('reset-btn')!.onclick = () => this.startNewGameFromUI();
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
-        if (roleSelect) {
-            roleSelect.onchange = () => this.startNewGameFromUI();
-        }
+        if (roleSelect) roleSelect.onchange = () => this.startNewGameFromUI();
     }
 }
 
