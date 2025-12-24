@@ -1,0 +1,59 @@
+:root {
+    --bg-color: #2c3e50;
+    --board-color: #2e7d32;
+    --line-color: #1b5e20;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: white;
+    font-family: sans-serif;
+    display: flex;
+    justify-content: center;
+    padding-top: 50px;
+}
+
+.container { text-align: center; }
+
+.info { margin-bottom: 20px; font-size: 1.2rem; }
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 50px);
+    grid-template-rows: repeat(8, 50px);
+    gap: 2px;
+    background-color: var(--line-color);
+    border: 5px solid var(--line-color);
+    margin: 0 auto;
+}
+
+.cell {
+    background-color: var(--board-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.cell:hover { background-color: #388e3c; }
+
+/* 石のスタイル */
+.piece {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    transition: transform 0.3s;
+}
+.black { background-color: #000; box-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+.white { background-color: #fff; box-shadow: 2px 2px 4px rgba(0,0,0,0.3); }
+
+.message { margin-top: 20px; color: #ffeb3b; height: 1.5rem; }
+
+button {
+    margin-top: 20px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: #ecf0f1;
+    border: none;
+    border-radius: 4px;
+}
