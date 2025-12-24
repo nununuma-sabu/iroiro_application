@@ -86,7 +86,7 @@ class BabanukiGame {
      * トランプの数字を表示用文字列（A, J, Q, K）に変換
      */
     private getRankDisplay(rank: Rank): string {
-        if (rank === 'Joker') return 'J';
+        if (rank === 'Joker') return 'JOKER';
         if (rank === 1) return 'A';
         if (rank === 11) return 'J';
         if (rank === 12) return 'Q';

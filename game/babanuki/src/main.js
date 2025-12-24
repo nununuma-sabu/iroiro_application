@@ -74,7 +74,7 @@ class BabanukiGame {
      */
     getRankDisplay(rank) {
         if (rank === 'Joker')
-            return 'J';
+            return 'JOKER';
         if (rank === 1)
             return 'A';
         if (rank === 11)
