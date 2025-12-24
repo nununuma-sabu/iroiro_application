@@ -6,7 +6,7 @@ class Reversi {
     private currentPlayer: Player = 1;
     private readonly size = 8;
 
-    private humanPlayer: Player = 1; // デフォルト: 先手（黒）
+    private humanPlayer: Player = 1; 
     private cpuPlayer: Player = 2;
 
     // 盤面の位置による重み付けテーブル（評価関数用）
@@ -33,7 +33,6 @@ class Reversi {
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
         if (!roleSelect) return;
         roleSelect.disabled = !enabled;
-        roleSelect.title = enabled ? '' : 'ゲーム中は変更できません（リセットで変更できます）';
     }
 
     private initBoard() {
@@ -49,8 +48,7 @@ class Reversi {
         this.setRoleSelectEnabled(true);
 
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
-        const value = roleSelect?.value;
-        this.humanPlayer = value === '2' ? 2 : 1;
+        this.humanPlayer = roleSelect?.value === '2' ? 2 : 1;
         this.cpuPlayer = this.humanPlayer === 1 ? 2 : 1;
 
         this.initBoard();
@@ -151,7 +149,6 @@ class Reversi {
             let bestScore = -Infinity;
             for (const move of moves) {
                 const nextBoard = this.simulateMove(this.board, move.r, move.c, this.cpuPlayer);
-                // 深さ3まで探索（自分・相手・自分）
                 const score = this.minimax(nextBoard, 3, -Infinity, Infinity, false, this.cpuPlayer);
                 if (score > bestScore) {
                     bestScore = score;
@@ -271,7 +268,15 @@ class Reversi {
     }
 
     private setupEventListeners() {
-        document.getElementById('reset-btn')!.onclick = () => this.startNewGameFromUI();
+        document.getElementById('reset-btn')!.onclick = () => {
+            const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
+            if (roleSelect) roleSelect.value = "1"; 
+
+            const aiModeSelect = document.getElementById('ai-mode') as HTMLSelectElement | null;
+            if (aiModeSelect) aiModeSelect.value = "random"; // 思考もリセット時にランダムに戻す
+
+            this.startNewGameFromUI();
+        };
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
         if (roleSelect) roleSelect.onchange = () => this.startNewGameFromUI();
     }

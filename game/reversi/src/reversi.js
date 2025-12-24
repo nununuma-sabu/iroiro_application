@@ -12,7 +12,7 @@ class Reversi {
         this.board = [];
         this.currentPlayer = 1;
         this.size = 8;
-        this.humanPlayer = 1; // デフォルト: 先手（黒）
+        this.humanPlayer = 1;
         this.cpuPlayer = 2;
         // 盤面の位置による重み付けテーブル（評価関数用）
         this.weightTable = [
@@ -36,7 +36,6 @@ class Reversi {
         if (!roleSelect)
             return;
         roleSelect.disabled = !enabled;
-        roleSelect.title = enabled ? '' : 'ゲーム中は変更できません（リセットで変更できます）';
     }
     initBoard() {
         this.board = Array.from({ length: this.size }, () => Array(this.size).fill(0));
@@ -51,8 +50,7 @@ class Reversi {
         this.roleLocked = false;
         this.setRoleSelectEnabled(true);
         const roleSelect = document.getElementById('role-select');
-        const value = roleSelect === null || roleSelect === void 0 ? void 0 : roleSelect.value;
-        this.humanPlayer = value === '2' ? 2 : 1;
+        this.humanPlayer = (roleSelect === null || roleSelect === void 0 ? void 0 : roleSelect.value) === '2' ? 2 : 1;
         this.cpuPlayer = this.humanPlayer === 1 ? 2 : 1;
         this.initBoard();
         this.render();
@@ -149,7 +147,6 @@ class Reversi {
                 let bestScore = -Infinity;
                 for (const move of moves) {
                     const nextBoard = this.simulateMove(this.board, move.r, move.c, this.cpuPlayer);
-                    // 深さ3まで探索（自分・相手・自分）
                     const score = this.minimax(nextBoard, 3, -Infinity, Infinity, false, this.cpuPlayer);
                     if (score > bestScore) {
                         bestScore = score;
@@ -264,7 +261,15 @@ class Reversi {
         setTimeout(() => msgEl.innerText = '', 3000);
     }
     setupEventListeners() {
-        document.getElementById('reset-btn').onclick = () => this.startNewGameFromUI();
+        document.getElementById('reset-btn').onclick = () => {
+            const roleSelect = document.getElementById('role-select');
+            if (roleSelect)
+                roleSelect.value = "1";
+            const aiModeSelect = document.getElementById('ai-mode');
+            if (aiModeSelect)
+                aiModeSelect.value = "random"; // 思考もリセット時にランダムに戻す
+            this.startNewGameFromUI();
+        };
         const roleSelect = document.getElementById('role-select');
         if (roleSelect)
             roleSelect.onchange = () => this.startNewGameFromUI();
