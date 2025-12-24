@@ -9,6 +9,18 @@ class Reversi {
     private humanPlayer: Player = 1; // デフォルト: 先手（黒）
     private cpuPlayer: Player = 2;
 
+    // 盤面の位置による重み付けテーブル（評価関数用）
+    private readonly weightTable = [
+        [100, -20, 10,  5,  5, 10, -20, 100],
+        [-20, -50, -2, -2, -2, -2, -50, -20],
+        [ 10,  -2,  1,  1,  1,  1,  -2,  10],
+        [  5,  -2,  1,  0,  0,  1,  -2,   5],
+        [  5,  -2,  1,  0,  0,  1,  -2,   5],
+        [  10,  -2,  1,  1,  1,  1,  -2,  10],
+        [-20, -50, -2, -2, -2, -2, -50, -20],
+        [100, -20, 10,  5,  5, 10, -20, 100]
+    ];
+
     // 1手でも進んだら、ロール（先手/後手）変更をロックする
     private roleLocked = false;
 
@@ -17,7 +29,6 @@ class Reversi {
 
     constructor() {
         this.setupEventListeners();
-
         // 初期UI（先手/後手）を読み取り、ゲーム開始
         this.startNewGameFromUI();
     }
@@ -42,7 +53,6 @@ class Reversi {
         this.roleLocked = false;
         this.setRoleSelectEnabled(true);
 
-        // UIが無い/読めない場合はデフォルト（先手）
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
         const value = roleSelect?.value;
         this.humanPlayer = value === '2' ? 2 : 1;
@@ -55,10 +65,8 @@ class Reversi {
         void this.processTurn(this.gameId);
     }
 
-    // 8方向の定義
     private directions = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
 
-    // 指定したマスに置いた時に裏返せる石を取得
     private getFlips(r: number, c: number, player: Player): {r: number, c: number}[] {
         if (this.board[r][c] !== 0) return [];
         const opponent = player === 1 ? 2 : 1;
@@ -90,15 +98,13 @@ class Reversi {
     }
 
     private async handleMove(r: number, c: number) {
-        if (this.currentPlayer !== this.humanPlayer) return; // 人間の番のみ受付
+        if (this.currentPlayer !== this.humanPlayer) return;
 
         const myGameId = this.gameId;
         const flips = this.getFlips(r, c, this.humanPlayer);
         if (flips.length === 0) return;
 
         this.executeMove(r, c, flips);
-
-        // CPUのターン（必要なら）
         await this.processTurn(myGameId);
     }
 
@@ -136,7 +142,7 @@ class Reversi {
         }
 
         if (this.currentPlayer === this.cpuPlayer) {
-            await new Promise(resolve => setTimeout(resolve, 600)); // CPUの思考時間
+            await new Promise(resolve => setTimeout(resolve, 600));
             await this.cpuMove(gameId);
         }
     }
@@ -146,13 +152,53 @@ class Reversi {
         if (this.currentPlayer !== this.cpuPlayer) return;
 
         const moves = this.getValidMoves(this.cpuPlayer);
-        if (moves.length > 0) {
-            // ランダムに選択（ここを将来AIに！）
-            const move = moves[Math.floor(Math.random() * moves.length)];
-            const flips = this.getFlips(move.r, move.c, this.cpuPlayer);
-            this.executeMove(move.r, move.c, flips);
+        if (moves.length === 0) return;
+
+        // HTML側のセレクトボックスからAIモードを取得
+        const aiMode = (document.getElementById('ai-mode') as HTMLSelectElement)?.value || 'random';
+        let selectedMove = moves[0];
+
+        if (aiMode === 'eval') {
+            // 評価関数モード：各候補手をシミュレーションして最高スコアの手を選択
+            let maxScore = -Infinity;
+            for (const move of moves) {
+                const score = this.evaluateMove(move.r, move.c, this.cpuPlayer);
+                if (score > maxScore) {
+                    maxScore = score;
+                    selectedMove = move;
+                }
+            }
+        } else {
+            // ランダムモード
+            selectedMove = moves[Math.floor(Math.random() * moves.length)];
         }
+
+        const flips = this.getFlips(selectedMove.r, selectedMove.c, this.cpuPlayer);
+        this.executeMove(selectedMove.r, selectedMove.c, flips);
         await this.processTurn(gameId);
+    }
+
+    // 特定の座標に石を置いた場合の盤面全体の評価値を計算
+    private evaluateMove(r: number, c: number, player: Player): number {
+        const flips = this.getFlips(r, c, player);
+        // 盤面をディープコピーしてシミュレーション
+        const tempBoard = this.board.map(row => [...row]);
+        tempBoard[r][c] = player;
+        flips.forEach(f => tempBoard[f.r][f.c] = player);
+
+        let score = 0;
+        for (let i = 0; i < 8; i++) {
+            for (let j = 0; j < 8; j++) {
+                if (tempBoard[i][j] === player) {
+                    // 自分の石がある場所の重みを加算
+                    score += this.weightTable[i][j];
+                } else if (tempBoard[i][j] !== 0) {
+                    // 相手の石がある場所の重みを減算
+                    score -= this.weightTable[i][j];
+                }
+            }
+        }
+        return score;
     }
 
     private render() {
@@ -160,7 +206,6 @@ class Reversi {
         boardEl.innerHTML = '';
         let bCount = 0, wCount = 0;
 
-        // 置ける場所（合法手）をハイライトするためのセット（人間の番だけ）
         const validMoves = this.currentPlayer === this.humanPlayer
             ? this.getValidMoves(this.currentPlayer)
             : [];
@@ -172,7 +217,7 @@ class Reversi {
                 cellEl.className = 'cell';
                 cellEl.onclick = () => this.handleMove(r, c);
 
-                // 石が置ける場所を光らせる
+                // 有効な着手箇所をハイライト
                 if (cell === 0 && validMoveSet.has(`${r},${c}`)) {
                     cellEl.classList.add('valid-move');
                 }
@@ -201,7 +246,6 @@ class Reversi {
 
     private setupEventListeners() {
         document.getElementById('reset-btn')!.onclick = () => this.startNewGameFromUI();
-
         const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
         if (roleSelect) {
             roleSelect.onchange = () => this.startNewGameFromUI();
@@ -209,5 +253,4 @@ class Reversi {
     }
 }
 
-// 実行
 new Reversi();
