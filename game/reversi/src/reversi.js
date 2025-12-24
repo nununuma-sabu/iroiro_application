@@ -113,11 +113,18 @@ class Reversi {
         const boardEl = document.getElementById('board');
         boardEl.innerHTML = '';
         let bCount = 0, wCount = 0;
+        // 置ける場所（合法手）をハイライトするためのセット
+        const validMoves = this.getValidMoves(this.currentPlayer);
+        const validMoveSet = new Set(validMoves.map(m => `${m.r},${m.c}`));
         this.board.forEach((row, r) => {
             row.forEach((cell, c) => {
                 const cellEl = document.createElement('div');
                 cellEl.className = 'cell';
                 cellEl.onclick = () => this.handleMove(r, c);
+                // 石が置ける場所を光らせる
+                if (cell === 0 && validMoveSet.has(`${r},${c}`)) {
+                    cellEl.classList.add('valid-move');
+                }
                 if (cell !== 0) {
                     const piece = document.createElement('div');
                     piece.className = `piece ${cell === 1 ? 'black' : 'white'}`;

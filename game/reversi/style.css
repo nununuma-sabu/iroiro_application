@@ -33,9 +33,36 @@ body {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    position: relative;
 }
 
 .cell:hover { background-color: #388e3c; }
+
+/* 石が置ける場所（合法手）を光らせる */
+.cell.valid-move {
+    box-shadow:
+        inset 0 0 0 3px rgba(255, 235, 59, 0.95),
+        0 0 12px rgba(255, 235, 59, 0.55);
+    animation: validMovePulse 1.2s ease-in-out infinite;
+}
+
+.cell.valid-move::after {
+    content: '';
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: rgba(255, 235, 59, 0.85);
+    box-shadow: 0 0 10px rgba(255, 235, 59, 0.8);
+}
+
+@keyframes validMovePulse {
+    0%, 100% { filter: brightness(1); transform: scale(1); }
+    50%      { filter: brightness(1.15); transform: scale(1.02); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cell.valid-move { animation: none; }
+}
 
 /* 石のスタイル */
 .piece {
