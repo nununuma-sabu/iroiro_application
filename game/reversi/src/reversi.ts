@@ -6,7 +6,7 @@ class Reversi {
     private currentPlayer: Player = 1;
     private readonly size = 8;
 
-    private humanPlayer: Player = 1; 
+    private humanPlayer: Player = 1;
     private cpuPlayer: Player = 2;
 
     // 盤面の位置による重み付けテーブル（評価関数用）
@@ -270,10 +270,10 @@ class Reversi {
     private setupEventListeners() {
         document.getElementById('reset-btn')!.onclick = () => {
             const roleSelect = document.getElementById('role-select') as HTMLSelectElement | null;
-            if (roleSelect) roleSelect.value = "1"; 
+            if (roleSelect) roleSelect.value = "1";
 
             const aiModeSelect = document.getElementById('ai-mode') as HTMLSelectElement | null;
-            if (aiModeSelect) aiModeSelect.value = "random"; // 思考もリセット時にランダムに戻す
+            if (aiModeSelect) aiModeSelect.value = "random";
 
             this.startNewGameFromUI();
         };
