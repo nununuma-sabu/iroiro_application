@@ -38,6 +38,7 @@ var BabanukiGame = /** @class */ (function () {
     function BabanukiGame() {
         var _this = this;
         this.players = [];
+        this.ranking = []; // 上がり順を保持する配列
         this.currentPlayerIndex = 0;
         this.isGameOver = false;
         var startBtn = document.getElementById('start-btn');
@@ -57,6 +58,7 @@ var BabanukiGame = /** @class */ (function () {
             resetBtn.onclick = function () {
                 document.getElementById('setup-area').style.display = 'block';
                 document.getElementById('reset-btn').style.display = 'none';
+                document.getElementById('ranking-display').style.display = 'none';
                 document.getElementById('cpu-container').innerHTML = '';
                 document.getElementById('player-cards').innerHTML = '';
                 _this.log("人数を決めて開始してください");
@@ -67,8 +69,9 @@ var BabanukiGame = /** @class */ (function () {
         var _this = this;
         this.isGameOver = false;
         this.currentPlayerIndex = 0;
+        this.ranking = []; // ランキングのリセット
         document.getElementById('setup-area').style.display = 'none';
-        // プレイヤー初期化
+        document.getElementById('ranking-display').style.display = 'none';
         this.players = [];
         for (var i = 0; i < playerCount; i++) {
             this.players.push({
@@ -79,16 +82,16 @@ var BabanukiGame = /** @class */ (function () {
                 isFinished: false
             });
         }
-        // 山札作成・シャッフル・配布
         var deck = this.createDeck();
         this.shuffle(deck);
         deck.forEach(function (card, i) {
             _this.players[i % playerCount].hand.push(card);
         });
-        // 全員初期ペア捨て
         this.players.forEach(function (p) { return p.hand = _this.discardPairs(p.hand); });
+        // 配布時点で上がっている人がいないかチェック
+        this.players.forEach(function (p) { return _this.checkFinish(p); });
         this.render();
-        this.log("ゲーム開始！左隣のCPUのカードを1枚選んでください。");
+        this.log("ゲーム開始！左隣のカードを引いてください。");
     };
     BabanukiGame.prototype.createDeck = function () {
         var deck = [];
@@ -101,7 +104,7 @@ var BabanukiGame = /** @class */ (function () {
         deck.push({ suit: 'Joker', rank: 'Joker' });
         return deck;
     };
-    // アルゴリズムとして「フィッシャー–イェーツのシャッフル」を使用
+    // フィッシャー–イェーツのシャッフル
     BabanukiGame.prototype.shuffle = function (deck) {
         var _a;
         for (var i = deck.length - 1; i > 0; i--) {
@@ -124,7 +127,6 @@ var BabanukiGame = /** @class */ (function () {
         });
         return newHand;
     };
-    // 「左隣のまだ終わっていない人」のインデックスを取得
     BabanukiGame.prototype.getTargetIndex = function (currentIndex) {
         var next = (currentIndex + 1) % this.players.length;
         while (this.players[next].isFinished) {
@@ -148,7 +150,7 @@ var BabanukiGame = /** @class */ (function () {
         var card = targetPlayer.hand.splice(cardIdx, 1)[0];
         currentPlayer.hand.push(card);
         currentPlayer.hand = this.discardPairs(currentPlayer.hand);
-        this.log("".concat(currentPlayer.name, " \u304C ").concat(targetPlayer.name, " \u304B\u3089\u30AB\u30FC\u30C9\u3092\u5F15\u304D\u307E\u3057\u305F\u3002"));
+        this.log("".concat(currentPlayer.name, " \u304C ").concat(targetPlayer.name, " \u304B\u3089\u5F15\u304D\u307E\u3057\u305F\u3002"));
         this.checkFinish(targetPlayer);
         this.checkFinish(currentPlayer);
         if (this.checkGameOver()) {
@@ -160,20 +162,20 @@ var BabanukiGame = /** @class */ (function () {
     BabanukiGame.prototype.checkFinish = function (player) {
         if (player.hand.length === 0 && !player.isFinished) {
             player.isFinished = true;
-            this.log("".concat(player.name, " \u304C\u4E0A\u304C\u308A\u307E\u3057\u305F\uFF01"));
+            this.ranking.push(player); // 上がった順にリストに追加
+            this.log("".concat(player.name, " \u304C\u4E0A\u304C\u308A\u307E\u3057\u305F\uFF01 (").concat(this.ranking.length, "\u4F4D)"));
         }
     };
     BabanukiGame.prototype.nextTurn = function () {
         var _this = this;
+        if (this.isGameOver)
+            return;
         do {
             this.currentPlayerIndex = (this.currentPlayerIndex + 1) % this.players.length;
         } while (this.players[this.currentPlayerIndex].isFinished);
         this.render();
         if (this.players[this.currentPlayerIndex].isCPU) {
-            setTimeout(function () { return _this.cpuAction(); }, 1200);
-        }
-        else {
-            this.log("あなたの番です。左隣のカードを引いてください。");
+            setTimeout(function () { return _this.cpuAction(); }, 1000);
         }
     };
     BabanukiGame.prototype.cpuAction = function () {
@@ -186,12 +188,25 @@ var BabanukiGame = /** @class */ (function () {
     BabanukiGame.prototype.checkGameOver = function () {
         var remaining = this.players.filter(function (p) { return !p.isFinished; });
         if (remaining.length === 1) {
-            this.log("\u30B2\u30FC\u30E0\u7D42\u4E86\uFF01\u6700\u4E0B\u4F4D\u306F ".concat(remaining[0].name, " \u3067\u3059\u3002"));
+            // 最後の一人をランキングの最後に追加
+            this.ranking.push(remaining[0]);
             this.isGameOver = true;
-            document.getElementById('reset-btn').style.display = 'inline-block';
+            this.showFinalRanking();
             return true;
         }
         return false;
+    };
+    BabanukiGame.prototype.showFinalRanking = function () {
+        var _this = this;
+        this.log("ゲーム終了！最終結果を表示します。");
+        var display = document.getElementById('ranking-display');
+        display.style.display = 'block';
+        var html = "<h3>最終順位</h3>";
+        this.ranking.forEach(function (player, index) {
+            html += "\n                <div class=\"ranking-item\">\n                    <span>".concat(index + 1, "\u4F4D: ").concat(player.name, "</span>\n                    <span>").concat(index === _this.ranking.length - 1 ? '負け...' : '上がり', "</span>\n                </div>\n            ");
+        });
+        display.innerHTML = html;
+        document.getElementById('reset-btn').style.display = 'inline-block';
     };
     BabanukiGame.prototype.render = function () {
         var _this = this;
@@ -204,7 +219,7 @@ var BabanukiGame = /** @class */ (function () {
             if (i === 0) {
                 p.hand.forEach(function (card) { return playerContainer.appendChild(_this.createCardDiv(card, false)); });
                 if (p.isFinished)
-                    playerContainer.innerHTML = "<h3>✨ 上がり！ ✨</h3>";
+                    playerContainer.innerHTML = "<h3>✨ 上がり済み ✨</h3>";
             }
             else {
                 var area = document.createElement('div');
@@ -213,12 +228,11 @@ var BabanukiGame = /** @class */ (function () {
                 var cardsDiv_1 = document.createElement('div');
                 cardsDiv_1.className = 'cards-container';
                 if (p.isFinished) {
-                    cardsDiv_1.innerHTML = "<p>🏳️ 上がり</p>";
+                    cardsDiv_1.innerHTML = "<p>🏳️ 上がり済み</p>";
                 }
                 else {
                     p.hand.forEach(function (_, cardIdx) {
                         var cardEl = _this.createCardDiv(null, true);
-                        // 自分の番で、かつ隣のCPUならクリック可能
                         if (i === targetIdx && _this.currentPlayerIndex === 0 && !_this.isGameOver) {
                             cardEl.onclick = function () { return _this.handleDraw(i, cardIdx); };
                             cardEl.style.cursor = 'pointer';
@@ -237,9 +251,14 @@ var BabanukiGame = /** @class */ (function () {
         if (!isBack && card) {
             if (card.suit === '♥' || card.suit === '♦')
                 div.classList.add('red');
-            if (card.rank === 'Joker')
+            if (card.rank === 'Joker') {
                 div.classList.add('joker');
-            div.innerHTML = "".concat(card.rank === 'Joker' ? 'J' : card.rank, "<span>").concat(card.suit === 'Joker' ? '🤡' : card.suit, "</span>");
+                div.classList.add('joker-animation');
+                div.innerHTML = "J<span>\uD83E\uDD21</span>";
+            }
+            else {
+                div.innerHTML = "".concat(card.rank, "<span>").concat(card.suit, "</span>");
+            }
         }
         else {
             div.textContent = '?';
