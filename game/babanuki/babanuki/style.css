@@ -1,0 +1,152 @@
+body {
+    font-family: 'Helvetica Neue', Arial, sans-serif;
+    background-color: #2f3640;
+    color: white;
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+    margin: 0;
+}
+
+#app {
+    width: 100%;
+    max-width: 1000px;
+    text-align: center;
+}
+
+/* セットアップ */
+#setup-area {
+    background: #353b48;
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+}
+.setup-controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+}
+input[type="number"] {
+    padding: 10px;
+    border-radius: 4px;
+    border: none;
+    width: 60px;
+    font-size: 1.1rem;
+}
+
+/* CPUコンテナ */
+#cpu-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.cpu-player-area {
+    background-color: #353b48;
+    border-radius: 8px;
+    padding: 10px;
+    width: 160px;
+    min-height: 140px;
+    transition: transform 0.2s;
+}
+.cpu-player-area.active {
+    border: 3px solid #fbc531;
+    transform: scale(1.05);
+}
+
+.player-area {
+    background-color: #353b48;
+    border-radius: 12px;
+    padding: 20px;
+    min-height: 150px;
+}
+
+.cards-container {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* カードスタイル */
+.card {
+    width: 50px;
+    height: 75px;
+    background: white;
+    color: #2f3542;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    font-size: 1rem;
+    box-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+}
+.card.red { color: #e84118; }
+.card.joker { background-color: #fbc531; }
+.card.back {
+    background: repeating-linear-gradient(45deg, #273c75, #273c75 5px, #192a56 5px, #192a56 10px);
+    color: transparent;
+    border: 1px solid #f5f6fa;
+}
+
+/* ボタン・メッセージ */
+#message-area { margin: 20px 0; min-height: 80px; }
+button {
+    padding: 10px 20px;
+    background: #44bd32;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+}
+button:hover { background: #4cd137; }
+
+/* ジョーカー用の微振動アニメーション */
+@keyframes joker-shake {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    25% { transform: translate(1px, 1px) rotate(1deg); }
+    50% { transform: translate(-1px, -1px) rotate(-1deg); }
+    75% { transform: translate(1px, -1px) rotate(1deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+}
+
+/* ジョーカー所持時のスタイル */
+.card.joker-animation {
+    animation: joker-shake 0.2s infinite; /* 高速で震えさせる */
+    border: 2px solid #f1c40f;
+    box-shadow: 0 0 15px #f1c40f; /* 黄金色に光らせる */
+    z-index: 10; /* 他のカードより少し手前に */
+}
+
+#ranking-display {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px auto;
+    max-width: 300px;
+    text-align: left;
+}
+
+/* ランキング関係 */
+#ranking-display h3 {
+    text-align: center;
+    margin-top: 0;
+    color: #fbc531;
+}
+
+.ranking-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 5px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.ranking-item:last-child {
+    border-bottom: none;
+    color: #e84118; /* 最下位は赤色に */
+}
