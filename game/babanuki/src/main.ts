@@ -1,24 +1,11 @@
-/**
- * カードのスート定義
- */
 type Suit = '♠' | '♥' | '♦' | '♣' | 'Joker';
-
-/**
- * カードの数字定義（1〜13、またはJoker）
- */
 type Rank = number | 'Joker';
 
-/**
- * カードオブジェクトの構造
- */
 interface Card {
     suit: Suit;
     rank: Rank;
 }
 
-/**
- * プレイヤーの状態管理構造
- */
 interface Player {
     id: number;
     name: string;
@@ -34,7 +21,7 @@ class BabanukiGame {
     private isGameOver: boolean = false;
 
     /**
-     * コンストラクタ：初期イベントのバインド
+     * コンストラクタ：初期ボタンイベントの登録
      */
     constructor() {
         const startBtn = document.getElementById('start-btn');
@@ -62,7 +49,7 @@ class BabanukiGame {
     }
 
     /**
-     * ゲームの初期化：プレイヤー生成、山札配布、初期ペア捨てを実行
+     * ゲームの初期化処理
      */
     private init(playerCount: number) {
         this.isGameOver = false;
@@ -96,7 +83,19 @@ class BabanukiGame {
     }
 
     /**
-     * 山札（52枚 + Joker）の生成
+     * トランプの数字を表示用文字列（A, J, Q, K）に変換
+     */
+    private getRankDisplay(rank: Rank): string {
+        if (rank === 'Joker') return 'J';
+        if (rank === 1) return 'A';
+        if (rank === 11) return 'J';
+        if (rank === 12) return 'Q';
+        if (rank === 13) return 'K';
+        return rank.toString();
+    }
+
+    /**
+     * 53枚の山札を生成
      */
     private createDeck(): Card[] {
         const deck: Card[] = [];
@@ -109,7 +108,7 @@ class BabanukiGame {
     }
 
     /**
-     * フィッシャー–イェーツのアルゴリズムによる配列のシャッフル
+     * フィッシャー–イェーツのシャッフル
      */
     private shuffle(deck: Card[]) {
         for (let i = deck.length - 1; i > 0; i--) {
@@ -119,7 +118,7 @@ class BabanukiGame {
     }
 
     /**
-     * 手札から同じ数字のペアを探して削除するロジック
+     * 手札の重複ペアを削除
      */
     private discardPairs(hand: Card[]): Card[] {
         const rankMap = new Map<Rank, Card[]>();
@@ -138,7 +137,7 @@ class BabanukiGame {
     }
 
     /**
-     * 現在のプレイヤーから見て「左隣のまだ脱落していない人」のインデックスを取得
+     * 左隣の有効なプレイヤーのインデックスを計算
      */
     private getTargetIndex(currentIndex: number): number {
         let next = (currentIndex + 1) % this.players.length;
@@ -149,7 +148,7 @@ class BabanukiGame {
     }
 
     /**
-     * プレイヤーがカードをクリックした際のイベントハンドラ
+     * プレイヤーがカードをクリックした際のドロー実行
      */
     private async handleDraw(fromIdx: number, cardIdx: number) {
         if (this.isGameOver || this.players[this.currentPlayerIndex].isCPU) return;
@@ -157,7 +156,7 @@ class BabanukiGame {
     }
 
     /**
-     * 実際にカードを移動させ、ペア捨てと上がり判定を行うコアロジック
+     * カードの移動とペア捨て、勝利判定を含むコアムーブ
      */
     private executeMove(fromIdx: number, cardIdx: number) {
         const currentPlayer = this.players[this.currentPlayerIndex];
@@ -181,7 +180,7 @@ class BabanukiGame {
     }
 
     /**
-     * プレイヤーの手札が0になったかを確認し、ランキングに登録する
+     * 個別プレイヤーの上がりチェック
      */
     private checkFinish(player: Player) {
         if (player.hand.length === 0 && !player.isFinished) {
@@ -192,7 +191,7 @@ class BabanukiGame {
     }
 
     /**
-     * ターンを次のプレイヤーに回し、CPUであれば自動実行を開始する
+     * ターンを次に進め、CPUの場合はAIを起動
      */
     private nextTurn() {
         if (this.isGameOver) return;
@@ -208,7 +207,7 @@ class BabanukiGame {
     }
 
     /**
-     * CPUによる自動カード選択ロジック
+     * CPUによるランダムなドロー操作
      */
     private cpuAction() {
         if (this.isGameOver) return;
@@ -218,7 +217,7 @@ class BabanukiGame {
     }
 
     /**
-     * 残り人数を確認し、最下位が決定したか判定する
+     * ゲーム全体の終了判定
      */
     private checkGameOver(): boolean {
         const remaining = this.players.filter(p => !p.isFinished);
@@ -232,7 +231,7 @@ class BabanukiGame {
     }
 
     /**
-     * ゲーム終了時の最終順位表をHTMLにレンダリングする
+     * 最終順位のHTML表示
      */
     private showFinalRanking() {
         this.log("ゲーム終了！最終結果を表示します。");
@@ -244,7 +243,7 @@ class BabanukiGame {
             html += `
                 <div class="ranking-item">
                     <span>${index + 1}位: ${player.name}</span>
-                    <span>${index === this.ranking.length - 1 ? '負け...' : '上がり'}</span>
+                    <span>${index === this.ranking.length - 1 ? '最下位' : '上がり'}</span>
                 </div>
             `;
         });
@@ -253,7 +252,7 @@ class BabanukiGame {
     }
 
     /**
-     * 現在のゲーム状態を画面全体に反映する
+     * 画面全体のレンダリング（透視モード対応）
      */
     private render() {
         const cpuContainer = document.getElementById('cpu-container')!;
@@ -261,6 +260,7 @@ class BabanukiGame {
         const playerContainer = document.getElementById('player-cards')!;
         playerContainer.innerHTML = '';
 
+        const isPlayerFinished = this.players[0].isFinished;
         const targetIdx = this.getTargetIndex(this.currentPlayerIndex);
 
         this.players.forEach((p, i) => {
@@ -278,9 +278,12 @@ class BabanukiGame {
                 if (p.isFinished) {
                     cardsDiv.innerHTML = "<p>🏳️ 上がり済み</p>";
                 } else {
-                    p.hand.forEach((_, cardIdx) => {
-                        const cardEl = this.createCardDiv(null, true);
-                        if (i === targetIdx && this.currentPlayerIndex === 0 && !this.isGameOver) {
+                    p.hand.forEach((card, cardIdx) => {
+                        // プレイヤーが上がった後はCPUの手札を公開する
+                        const showFace = isPlayerFinished;
+                        const cardEl = this.createCardDiv(card, !showFace);
+
+                        if (i === targetIdx && this.currentPlayerIndex === 0 && !this.isGameOver && !isPlayerFinished) {
                             cardEl.onclick = () => this.handleDraw(i, cardIdx);
                             cardEl.style.cursor = 'pointer';
                         }
@@ -294,19 +297,22 @@ class BabanukiGame {
     }
 
     /**
-     * 個別のカードDOM要素を生成する（スートやアニメーションの付与）
+     * トランプ1枚のDOM要素を生成
      */
-    private createCardDiv(card: Card | null, isBack: boolean): HTMLElement {
+    private createCardDiv(card: Card, isBack: boolean): HTMLElement {
         const div = document.createElement('div');
         div.className = 'card' + (isBack ? ' back' : '');
+        
         if (!isBack && card) {
             if (card.suit === '♥' || card.suit === '♦') div.classList.add('red');
+            const rankLabel = this.getRankDisplay(card.rank);
+
             if (card.rank === 'Joker') {
                 div.classList.add('joker');
                 div.classList.add('joker-animation');
-                div.innerHTML = `J<span>🤡</span>`;
+                div.innerHTML = `${rankLabel}<span>🤡</span>`;
             } else {
-                div.innerHTML = `${card.rank}<span>${card.suit}</span>`;
+                div.innerHTML = `${rankLabel}<span>${card.suit}</span>`;
             }
         } else {
             div.textContent = '?';
@@ -315,14 +321,11 @@ class BabanukiGame {
     }
 
     /**
-     * 画面上のログエリアにメッセージを出力する
+     * メッセージログの更新
      */
     private log(m: string) {
         document.getElementById('message-log')!.innerHTML = `<p>${m}</p>`;
     }
 }
 
-/**
- * ページロード完了時にゲームインスタンスを生成
- */
 window.onload = () => new BabanukiGame();
