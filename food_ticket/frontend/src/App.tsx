@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import LoginScreen from './components/LoginScreen';
+import FaceRecognitionScreen from './components/FaceRecognitionScreen';
 import CustomerAttributeScreen from './components/CustomerAttributeScreen';
 import MenuScreen from './components/MenuScreen';
 import type { StoreInfo } from './types/auth';
@@ -7,16 +8,23 @@ import type { StoreInfo } from './types/auth';
 function App() {
   const [storeInfo, setStoreInfo] = useState<StoreInfo | null>(null);
   const [attributeId, setAttributeId] = useState<number | null>(null);
+  const [useFaceRecognition, setUseFaceRecognition] = useState(true); // 顔認証を使うか
 
   // ログアウト処理
   const handleLogout = () => {
     setStoreInfo(null);
     setAttributeId(null);
+    setUseFaceRecognition(true);
   };
 
-  // 顧客属性登録完了時
+  // 顔認証完了時
   const handleAttributeRegistered = (id: number) => {
     setAttributeId(id);
+  };
+
+  // 顔認証をスキップして手動入力へ
+  const handleSkipFaceRecognition = () => {
+    setUseFaceRecognition(false);
   };
 
   return (
@@ -24,12 +32,21 @@ function App() {
       {! storeInfo ? (
         /* --- 未ログイン：ログイン画面 --- */
         <LoginScreen onLoginSuccess={(info) => setStoreInfo(info)} />
-      ) : ! attributeId ? (
-        /* --- ログイン済み・属性未登録：顧客属性登録画面 --- */
-        <CustomerAttributeScreen
-          storeId={storeInfo.id}
-          onAttributeRegistered={handleAttributeRegistered}
-        />
+      ) : !attributeId ? (
+        useFaceRecognition ? (
+          /* --- 顔認証画面 --- */
+          <FaceRecognitionScreen
+            storeId={storeInfo.id}
+            onAttributeRegistered={handleAttributeRegistered}
+            onSkip={handleSkipFaceRecognition}
+          />
+        ) : (
+          /* --- 手動入力画面 --- */
+          <CustomerAttributeScreen
+            storeId={storeInfo.id}
+            onAttributeRegistered={handleAttributeRegistered}
+          />
+        )
       ) : (
         /* --- ログイン済み・属性登録済み：注文画面 --- */
         <div className="flex flex-col min-h-screen">
