@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { getStoreProducts } from '../api/store';
+import { createOrder } from '../api/order';
 import type { Product } from '../types/store';
+import type { OrderCreate } from '../types/order';
 
 interface MenuScreenProps {
   storeId: number;
 }
 
 interface CartItem {
-  product: Product;
+  product:  Product;
   quantity: number;
 }
 
@@ -15,6 +17,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [ordering, setOrdering] = useState(false); // 注文処理中フラグ
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -53,7 +56,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
       const existing = prev.find((item) => item.product.product_id === product.product_id);
       if (existing) {
         return prev.map((item) =>
-          item.product.product_id === product.product_id ? { ...item, quantity: item.quantity + 1 } : item
+          item.product.product_id === product.product_id ?  { ...item, quantity: item. quantity + 1 } : item
         );
       }
       return [...prev, { product, quantity: 1 }];
@@ -65,7 +68,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
       const existing = prev.find((item) => item.product.product_id === productId);
       if (existing && existing.quantity > 1) {
         return prev.map((item) =>
-          item.product.product_id === productId ? { ...item, quantity: item.quantity - 1 } : item
+          item.product. product_id === productId ? { ...item, quantity: item.quantity - 1 } : item
         );
       }
       return prev.filter((item) => item.product.product_id !== productId);
@@ -87,6 +90,53 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
 
   const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
+  // 🆕 注文確定処理
+  const handleConfirmOrder = async () => {
+    if (cart.length === 0) return;
+
+    // 確認ダイアログ
+    if (! window.confirm(`合計 ¥${totalAmount.toLocaleString()} の注文を確定しますか？`)) {
+      return;
+    }
+
+    setOrdering(true);
+
+    try {
+      // 注文データの作成
+      const orderData: OrderCreate = {
+        store_id: storeId,
+        attribute_id: 1, // 🔴 仮値：今後顔認証機能で取得予定
+        items: cart.map((item) => ({
+          product_id:  item.product.product_id,
+          quantity: item.quantity,
+          unit_price: item. product.price,
+        })),
+        total_amount: totalAmount,
+        payment_method: '現金', // 🔴 固定値：今後選択可能にする予定
+        take_out_type: '店内', // 🔴 固定値：今後選択可能にする予定
+      };
+
+      // API呼び出し
+      const response = await createOrder(orderData);
+
+      // 成功時の処理
+      alert(`注文が完了しました！\n注文番号: ${response.order_id}`);
+      setCart([]); // カートをクリア
+      
+      // 商品リストを再取得（在庫が減っている可能性があるため）
+      const updatedProducts = await getStoreProducts(storeId);
+      setProducts(updatedProducts || []);
+
+    } catch (error:  any) {
+      // エラー処理
+      console.error('Order failed:', error);
+      const errorMessage = error.response?.data?.detail || '注文に失敗しました。もう一度お試しください。';
+      alert(`エラー: ${errorMessage}`);
+    } finally {
+      setOrdering(false);
+    }
+  };
+
   if (loading) return <div className="p-10 text-center text-gray-400 font-sans">読み込み中...</div>;
 
   return (
@@ -101,9 +151,9 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
             {products.map((product) => {
-              const qty = getItemQuantity(product.product_id);
+              const qty = getItemQuantity(product. product_id);
               return (
-                <div key={product.product_id} className="bg-white rounded-[2.5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 relative overflow-hidden group">
+                <div key={product.product_id} className="bg-white rounded-[2. 5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 relative overflow-hidden group">
                   
                   {/* 画像表示部分 */}
                   <div className="aspect-square rounded-[1.5rem] mb-4 overflow-hidden relative bg-gray-100">
@@ -123,7 +173,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
                   </div>
 
                   <div className="absolute bottom-5 right-5 flex items-center bg-gray-50 rounded-xl p-1 border z-10 shadow-inner">
-                    <button onClick={() => removeFromCart(product.product_id)} disabled={qty === 0} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm disabled:opacity-20 font-bold text-gray-600">－</button>
+                    <button onClick={() => removeFromCart(product.product_id)} disabled={qty === 0} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-red-500 font-bold">－</button>
                     <span className="mx-3 font-black text-blue-600">{qty}</span>
                     <button onClick={() => addToCart(product)} className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg shadow-sm font-bold">＋</button>
                   </div>
@@ -153,9 +203,9 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
                 {/* 1行目：名前 と 数量コントローラー（ご要望の配置） */}
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-3">
-                    <img src={getProductImage(item.product.product_name)} alt="" className="w-10 h-10 rounded-lg object-cover shadow-sm" />
+                    <img src={getProductImage(item.product. product_name)} alt="" className="w-10 h-10 rounded-lg object-cover shadow-sm" />
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product.product_name}</p>
+                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product. product_name}</p>
                       
                       {/* 名前横のコントローラー */}
                       <div className="flex items-center bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
@@ -170,7 +220,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
 
                 <div className="flex justify-between items-end pl-[52px]">
                   <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">¥{item.product.price.toLocaleString()} / unit</p>
-                  <p className="font-black text-blue-600 text-lg">¥{(item.product.price * item.quantity).toLocaleString()}</p>
+                  <p className="font-black text-blue-600 text-lg">¥{(item.product.price * item. quantity).toLocaleString()}</p>
                 </div>
               </div>
             ))
@@ -181,13 +231,14 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
         <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">Total</span>
-            <span className="text-4xl font-black text-gray-900 tracking-tighter">¥{totalAmount.toLocaleString()}</span>
+            <span className="text-4xl font-black text-gray-900 tracking-tighter">¥{totalAmount. toLocaleString()}</span>
           </div>
           <button 
-            disabled={cart.length === 0}
-            className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black text-xl hover:bg-blue-600 active:scale-[0.98] transition-all disabled:bg-gray-100 disabled:text-gray-300 shadow-xl"
+            onClick={handleConfirmOrder}
+            disabled={cart.length === 0 || ordering}
+            className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black text-xl hover:bg-blue-600 active:scale-[0.98] transition-all disabled:bg-gray-100 disabled:text-gray-300 shadow-lg"
           >
-            注文を確定する
+            {ordering ? '処理中.. .' : '注文を確定する'}
           </button>
         </div>
       </div>
