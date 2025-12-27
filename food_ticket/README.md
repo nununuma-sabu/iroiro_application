@@ -72,39 +72,39 @@
 food_ticket/
 ├── backend/              # FastAPI バックエンド
 │   ├── app/
+│   │   ├── core/
+│   │   │   └── security.py     # パスワードハッシュ化
 │   │   ├── db/
-│   │   │   ├── models.py       # SQLAlchemyモデル
 │   │   │   ├── base.py         # Base定義
+│   │   │   ├── models.py       # SQLAlchemyモデル
 │   │   │   └── session.py      # DB接続設定
+│   │   ├── schemas/
+│   │   │   └── order.py        # Pydanticスキーマ
 │   │   └── main.py             # FastAPIアプリケーション
 │   ├── scripts/
-│   │   ├── init_db.py          # DB初期化
-│   │   └── add_image_url_column.py  # マイグレーション
-│   ├── requirements.txt
-│   └── food_ticket.db          # SQLiteデータベース
+│   │   ├── check_db.py         # DB確認スクリプト
+│   │   ├── create_db.py        # DB作成スクリプト
+│   │   └── seed. py             # 初期データ投入
+│   ├── vending_machine.db      # SQLiteデータベース
+│   └── requirements.txt        # Python依存関係
 │
 └── frontend/             # React フロントエンド
-    ├── src/
-    │   ├── components/
-    │   │   ├── LoginScreen.tsx
-    │   │   ├── FaceRecognitionScreen.tsx
-    │   │   ├── CustomerAttributeScreen.tsx
-    │   │   └── MenuScreen.tsx
-    │   ├── api/                # API通信
-    │   │   ├── auth.ts
-    │   │   ├── customer.ts
-    │   │   ├── order.ts
-    │   │   └── store.ts
-    │   ├── types/              # TypeScript型定義
-    │   │   ├── auth.ts
-    │   │   ├── customer.ts
-    │   │   ├── order.ts
-    │   │   └── store.ts
-    │   └── App.tsx
     ├── public/
     │   ├── images/             # 商品画像
-    │   └── models/             # face-api.jsモデル
+    │   ├── models/             # face-api.jsモデル
+    │   └── vite.svg
+    ├── src/
+    │   ├── components/         # Reactコンポーネント
+    │   ├── api/                # API通信層
+    │   ├── types/              # TypeScript型定義
+    │   ├── App.tsx             # ルートコンポーネント
+    │   └── main.tsx            # エントリーポイント
+    ├── eslint. config.js
+    ├── index.html
     ├── package.json
+    ├── tsconfig.json
+    ├── tsconfig.app.json
+    ├── tsconfig.node.json
     └── vite.config.ts
 ```
 
@@ -142,15 +142,16 @@ venv\Scripts\activate  # Windows
 pip install -r requirements.txt
 
 # データベースの初期化
-python -m scripts.init_db
+python -m scripts.create_db
+python -m scripts.seed
 
 # サーバー起動
 uvicorn app.main:app --reload
 ```
 
-**バックエンドが起動**:  http://127.0.0.1:8000
+**バックエンドが起動**:   http://127.0.0.1:8000
 
-**API仕様書**: http://127.0.0.1:8000/docs
+**API仕様書**:  http://127.0.0.1:8000/docs
 
 ### 3. フロントエンドのセットアップ
 
@@ -170,13 +171,13 @@ curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/w
 curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/age_gender_model-weights_manifest.json
 curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/age_gender_model-shard1
 
-cd ../.. 
+cd ../..  
 
 # 開発サーバー起動
 npm run dev
 ```
 
-**フロントエンドが起動**: http://localhost:5173
+**フロントエンドが起動**:  http://localhost:5173
 
 ---
 
@@ -252,7 +253,7 @@ categories (カテゴリ)
 |---------|-----|------|
 | attribute_id | INTEGER | 主キー |
 | store_id | INTEGER | 店舗ID（外部キー） |
-| age_group | VARCHAR | 年齢層（10代, 20代... ） |
+| age_group | VARCHAR | 年齢層（10代, 20代...  ） |
 | gender | VARCHAR | 性別（男性, 女性） |
 | scanned_at | DATETIME | 登録日時 |
 
@@ -333,7 +334,7 @@ categories (カテゴリ)
     "category_name": "定食",
     "price": 850,
     "stock": 50,
-    "image_url":  "/images/hamburg.jpg"
+    "image_url":   "/images/hamburg.jpg"
   }
 ]
 ```
@@ -347,7 +348,7 @@ categories (カテゴリ)
 **リクエスト:**
 ```json
 {
-  "store_id":  1,
+  "store_id":   1,
   "attribute_id": 123,
   "items": [
     {
@@ -377,8 +378,8 @@ categories (カテゴリ)
 ### 商品の追加
 
 ```python
-# backend/scripts/add_products_with_images.py を実行
-python -m scripts.add_products_with_images
+# backend/scripts/seed.py を編集して実行
+python -m scripts.seed
 ```
 
 ### 画像の追加
@@ -388,7 +389,7 @@ python -m scripts.add_products_with_images
 cp path/to/image.jpg frontend/public/images/
 
 # データベースに登録
-sqlite3 backend/food_ticket.db
+sqlite3 backend/vending_machine.db
 ```
 
 ```sql
