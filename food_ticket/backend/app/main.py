@@ -3,6 +3,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
+from fastapi.middleware.cors import CORSMiddleware
 
 # 整理した各モジュールからインポート
 from app.db import models
@@ -10,6 +11,22 @@ from app.db.session import SessionLocal
 from app.core import security
 
 app = FastAPI(title="食券機シミュレーター API")
+
+# Reactからのアクセスを許可する設定
+# 開発中は少し広めに許可を与えて、確実に通信が通るように
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://0.0.0.0:5173",  # 念のため追加
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,  # Viteのデフォルトポート
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class OrderItem(BaseModel):
