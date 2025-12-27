@@ -128,6 +128,7 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
                 "category_name": item.product.category.category_name,
                 "price": item.product.standard_price,
                 "stock": item.current_stock,
+                "image_url": item.product.image_url,  # 🆕 追加
             }
         )
 

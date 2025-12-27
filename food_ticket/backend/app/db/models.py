@@ -55,6 +55,7 @@ class Product(Base):
     category_id = Column(Integer, ForeignKey("categories.category_id"))
     product_name = Column(String, nullable=False)
     standard_price = Column(Integer, nullable=False)
+    image_url = Column(String)
 
     category = relationship("Category", back_populates="products")
     inventories = relationship("StoreInventory", back_populates="product")
