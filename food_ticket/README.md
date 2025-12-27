@@ -44,7 +44,7 @@
 
 ### フロントエンド
 
-- **React** 18. x - UIライブラリ
+- **React** 18.x - UIライブラリ
 - **TypeScript** 5.x - 型安全性
 - **Vite** 5.x - ビルドツール
 - **Tailwind CSS** 3.x - スタイリング
@@ -80,7 +80,7 @@ food_ticket/
 │   ├── scripts/
 │   │   ├── init_db.py          # DB初期化
 │   │   └── add_image_url_column.py  # マイグレーション
-│   ├── requirements. txt
+│   ├── requirements.txt
 │   └── food_ticket.db          # SQLiteデータベース
 │
 └── frontend/             # React フロントエンド
@@ -97,7 +97,7 @@ food_ticket/
     │   │   └── store.ts
     │   ├── types/              # TypeScript型定義
     │   │   ├── auth.ts
-    │   │   ├── customer. ts
+    │   │   ├── customer.ts
     │   │   ├── order.ts
     │   │   └── store.ts
     │   └── App.tsx
