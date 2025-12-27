@@ -165,7 +165,7 @@ cd public
 mkdir -p models
 cd models
 
-curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api. js/master/weights/tiny_face_detector_model-weights_manifest.json
+curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-weights_manifest.json
 curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/tiny_face_detector_model-shard1
 curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/age_gender_model-weights_manifest.json
 curl -O https://raw.githubusercontent.com/justadudewhohacks/face-api.js/master/weights/age_gender_model-shard1
