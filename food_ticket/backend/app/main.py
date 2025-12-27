@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
 from fastapi.middleware.cors import CORSMiddleware
+import datetime
 
 # 整理した各モジュールからインポート
 from app.db import models
@@ -13,16 +14,15 @@ from app.core import security
 app = FastAPI(title="食券機シミュレーター API")
 
 # Reactからのアクセスを許可する設定
-# 開発中は少し広めに許可を与えて、確実に通信が通るように
 origins = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
-    "http://0.0.0.0:5173",  # 念のため追加
+    "http://0.0.0.0:5173",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,  # Viteのデフォルトポート
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -44,6 +44,13 @@ class OrderCreate(BaseModel):
     take_out_type: str
 
 
+# 🆕 顧客属性登録用スキーマ
+class CustomerAttributeCreate(BaseModel):
+    store_id: int
+    age_group: str
+    gender: str
+
+
 # DBセッションをリクエストごとに生成・終了するための依存注入用関数
 def get_db():
     db = SessionLocal()
@@ -53,7 +60,7 @@ def get_db():
         db.close()
 
 
-# 入力データのバリデーション（本来は app/schemas/store.py 等に分けるのがベスト）
+# 入力データのバリデーション
 class StoreLogin(BaseModel):
     store_id: int
     password: str
@@ -69,14 +76,12 @@ def login_store(login_data: StoreLogin, db: Session = Depends(get_db)):
     """
     店舗IDとパスワードで認証し、店舗情報を返すAPI
     """
-    # 1. DBから店舗情報を取得
     store = (
         db.query(models.Store)
         .filter(models.Store.store_id == login_data.store_id)
         .first()
     )
 
-    # 2. 店舗の存在確認とパスワード照合
     if not store or not security.verify_password(
         login_data.password, store.password_hash
     ):
@@ -86,14 +91,13 @@ def login_store(login_data: StoreLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    # 3. 認証成功（店舗名や地域情報を返して、フロントエンド側で保持させる）
     return {
         "status": "success",
         "store_info": {
             "id": store.store_id,
             "name": store.store_name,
-            "municipality": store.municipality.municipality_name,
             "prefecture": store.municipality.prefecture.prefecture_name,
+            "municipality": store.municipality.municipality_name,
         },
     }
 
@@ -103,7 +107,6 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
     """
     指定された店舗で「販売中」かつ「在庫がある」商品一覧を取得する
     """
-    # StoreInventory を起点に Product と Category を結合して取得
     items = (
         db.query(models.StoreInventory)
         .join(models.Product)
@@ -116,7 +119,6 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
         .all()
     )
 
-    # フロントエンドが使いやすい形に整形
     results = []
     for item in items:
         results.append(
@@ -130,6 +132,39 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
         )
 
     return results
+
+
+# 🆕 顧客属性登録API
+@app.post("/customer-attributes")
+def create_customer_attribute(
+    attribute_data: CustomerAttributeCreate, db: Session = Depends(get_db)
+):
+    """
+    顧客の年齢層・性別を登録し、attribute_idを返す
+    """
+    try:
+        # 新しい顧客属性レコードを作成
+        new_attribute = models.CustomerAttribute(
+            store_id=attribute_data.store_id,
+            age_group=attribute_data.age_group,
+            gender=attribute_data.gender,
+            scanned_at=datetime.datetime.now(),
+        )
+        db.add(new_attribute)
+        db.commit()
+        db.refresh(new_attribute)
+
+        return {
+            "attribute_id": new_attribute.attribute_id,
+            "store_id": new_attribute.store_id,
+            "age_group": new_attribute.age_group,
+            "gender": new_attribute.gender,
+            "scanned_at": new_attribute.scanned_at.isoformat(),
+        }
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @app.post("/orders")
@@ -147,11 +182,10 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
             take_out_type=order_data.take_out_type,
         )
         db.add(new_order)
-        db.flush()  # ここで order_id を確定させる
+        db.flush()
 
         # 2. 注文明細(OrderDetail)の作成と在庫(Inventory)の更新
         for item in order_data.items:
-            # 在庫情報の取得
             inventory = (
                 db.query(models.StoreInventory)
                 .filter(
@@ -160,19 +194,16 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
                 )
                 .with_for_update()
                 .first()
-            )  # 修正中に他の人が買えないようロック
+            )
 
-            # 在庫チェック
             if not inventory or inventory.current_stock < item.quantity:
                 raise HTTPException(
                     status_code=400,
                     detail=f"商品ID:{item.product_id} の在庫が不足しています",
                 )
 
-            # 在庫を減らす
             inventory.current_stock -= item.quantity
 
-            # 明細の追加
             detail = models.OrderDetail(
                 order_id=new_order.order_id,
                 product_id=item.product_id,
@@ -181,12 +212,11 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
             )
             db.add(detail)
 
-        # 全ての問題がなければ確定
         db.commit()
         return {"status": "success", "order_id": new_order.order_id}
 
     except Exception as e:
-        db.rollback()  # エラー時は全ての操作を取り消す
+        db.rollback()
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))

@@ -6,6 +6,7 @@ import type { OrderCreate } from '../types/order';
 
 interface MenuScreenProps {
   storeId: number;
+  attributeId:  number; // 🆕 顧客属性IDを受け取る
 }
 
 interface CartItem {
@@ -13,11 +14,11 @@ interface CartItem {
   quantity: number;
 }
 
-const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
+const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [ordering, setOrdering] = useState(false); // 注文処理中フラグ
+  const [ordering, setOrdering] = useState(false);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -33,9 +34,6 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
     fetchProducts();
   }, [storeId]);
 
-    // 商品と画像のマッピング　※いつかやる
-    
-  // --- 商品画像を取得するロジック（ここを更新！） ---
   const getProductImage = (productName: string) => {
     if (productName.includes('ハンバーグ')) {
       return '/images/hamburg.jpg';
@@ -43,14 +41,12 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
     if (productName.includes('からあげ')) {
       return '/images/karaage.jpg';
     }
-      if (productName.includes('ポテト')) {
+    if (productName.includes('ポテト')) {
       return '/images/potato.jpg';
     }
-    // それ以外のメニューは仮の画像
     return `https://picsum.photos/seed/${productName}/400/400`;
   };
 
-  // カート操作ロジック
   const addToCart = (product: Product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.product_id === product.product_id);
@@ -88,13 +84,12 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
     return item ? item.quantity : 0;
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
+  const totalAmount = cart.reduce((sum, item) => sum + item.product. price * item.quantity, 0);
 
-  // 🆕 注文確定処理
+  // 注文確定処理（attributeIdを使用）
   const handleConfirmOrder = async () => {
     if (cart.length === 0) return;
 
-    // 確認ダイアログ
     if (! window.confirm(`合計 ¥${totalAmount.toLocaleString()} の注文を確定しますか？`)) {
       return;
     }
@@ -102,33 +97,27 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
     setOrdering(true);
 
     try {
-      // 注文データの作成
       const orderData: OrderCreate = {
         store_id: storeId,
-        attribute_id: 1, // 🔴 仮値：今後顔認証機能で取得予定
+        attribute_id: attributeId, // 🆕 登録済みの顧客属性IDを使用
         items: cart.map((item) => ({
-          product_id:  item.product.product_id,
+          product_id: item.product.product_id,
           quantity: item.quantity,
-          unit_price: item. product.price,
+          unit_price: item.product.price,
         })),
         total_amount: totalAmount,
-        payment_method: '現金', // 🔴 固定値：今後選択可能にする予定
-        take_out_type: '店内', // 🔴 固定値：今後選択可能にする予定
+        payment_method: '現金',
+        take_out_type:  '店内',
       };
 
-      // API呼び出し
       const response = await createOrder(orderData);
 
-      // 成功時の処理
       alert(`注文が完了しました！\n注文番号: ${response.order_id}`);
-      setCart([]); // カートをクリア
-      
-      // 商品リストを再取得（在庫が減っている可能性があるため）
+      setCart([]);
+
       const updatedProducts = await getStoreProducts(storeId);
       setProducts(updatedProducts || []);
-
     } catch (error:  any) {
-      // エラー処理
       console.error('Order failed:', error);
       const errorMessage = error.response?.data?.detail || '注文に失敗しました。もう一度お試しください。';
       alert(`エラー: ${errorMessage}`);
@@ -141,7 +130,6 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
 
   return (
     <div className="flex flex-col lg:flex-row min-h-[calc(100vh-72px)] bg-gray-50/50 font-sans">
-      
       {/* メイン：商品グリッド */}
       <div className="flex-grow p-6 lg:p-10">
         <div className="max-w-5xl mx-auto">
@@ -153,12 +141,13 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
             {products.map((product) => {
               const qty = getItemQuantity(product. product_id);
               return (
-                <div key={product.product_id} className="bg-white rounded-[2. 5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 relative overflow-hidden group">
-                  
-                  {/* 画像表示部分 */}
+                <div
+                  key={product.product_id}
+                  className="bg-white rounded-[2. 5rem] p-5 shadow-sm hover:shadow-xl transition-all duration-500 border border-gray-100 relative overflow-hidden group"
+                >
                   <div className="aspect-square rounded-[1.5rem] mb-4 overflow-hidden relative bg-gray-100">
-                    <img 
-                      src={getProductImage(product.product_name)} 
+                    <img
+                      src={getProductImage(product.product_name)}
                       alt={product.product_name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -173,9 +162,20 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
                   </div>
 
                   <div className="absolute bottom-5 right-5 flex items-center bg-gray-50 rounded-xl p-1 border z-10 shadow-inner">
-                    <button onClick={() => removeFromCart(product.product_id)} disabled={qty === 0} className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-red-500 font-bold">－</button>
+                    <button
+                      onClick={() => removeFromCart(product.product_id)}
+                      disabled={qty === 0}
+                      className="w-8 h-8 flex items-center justify-center bg-white rounded-lg shadow-sm disabled:opacity-30 disabled:cursor-not-allowed text-gray-400 hover:text-red-500 font-bold"
+                    >
+                      －
+                    </button>
                     <span className="mx-3 font-black text-blue-600">{qty}</span>
-                    <button onClick={() => addToCart(product)} className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg shadow-sm font-bold">＋</button>
+                    <button
+                      onClick={() => addToCart(product)}
+                      className="w-8 h-8 flex items-center justify-center bg-blue-600 text-white rounded-lg shadow-sm font-bold"
+                    >
+                      ＋
+                    </button>
                   </div>
                 </div>
               );
@@ -189,38 +189,70 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
         <div className="flex items-center justify-between mb-8">
           <h3 className="text-xl font-black text-blue-600 tracking-tight flex items-center">🛒 注文内容</h3>
           {cart.length > 0 && (
-            <button onClick={clearAllCart} className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full">Clear All</button>
+            <button
+              onClick={clearAllCart}
+              className="text-[10px] font-bold text-gray-400 hover:text-red-500 uppercase tracking-widest bg-gray-50 px-3 py-1.5 rounded-full"
+            >
+              Clear All
+            </button>
           )}
         </div>
 
         <div className="flex-grow overflow-y-auto space-y-4 pr-1">
           {cart.length === 0 ? (
-            <div className="h-full flex items-center justify-center text-gray-300 italic text-sm font-medium">カートは空です</div>
+            <div className="h-full flex items-center justify-center text-gray-300 italic text-sm font-medium">
+              カートは空です
+            </div>
           ) : (
             cart.map((item) => (
-              <div key={item.product.product_id} className="bg-gray-50/70 rounded-3xl p-5 border border-gray-100 animate-in fade-in slide-in-from-right-3">
-                
-                {/* 1行目：名前 と 数量コントローラー（ご要望の配置） */}
+              <div
+                key={item.product.product_id}
+                className="bg-gray-50/70 rounded-3xl p-5 border border-gray-100 animate-in fade-in slide-in-from-right-3"
+              >
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-3">
-                    <img src={getProductImage(item.product. product_name)} alt="" className="w-10 h-10 rounded-lg object-cover shadow-sm" />
+                    <img
+                      src={getProductImage(item.product.product_name)}
+                      alt=""
+                      className="w-10 h-10 rounded-lg object-cover shadow-sm"
+                    />
                     <div className="flex items-center gap-2">
                       <p className="font-bold text-gray-800 text-sm leading-tight">{item.product. product_name}</p>
-                      
-                      {/* 名前横のコントローラー */}
+
                       <div className="flex items-center bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
-                        <button onClick={() => removeFromCart(item.product.product_id)} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 font-bold">－</button>
-                        <span className="px-2 text-xs font-black text-gray-700 min-w-[20px] text-center">{item.quantity}</span>
-                        <button onClick={() => addToCart(item.product)} className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600 font-bold">＋</button>
+                        <button
+                          onClick={() => removeFromCart(item. product.product_id)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 font-bold"
+                        >
+                          －
+                        </button>
+                        <span className="px-2 text-xs font-black text-gray-700 min-w-[20px] text-center">
+                          {item.quantity}
+                        </span>
+                        <button
+                          onClick={() => addToCart(item. product)}
+                          className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600 font-bold"
+                        >
+                          ＋
+                        </button>
                       </div>
                     </div>
                   </div>
-                  <button onClick={() => deleteItemCompletely(item.product.product_id)} className="text-gray-300 hover:text-red-500 font-bold text-xl px-2">×</button>
+                  <button
+                    onClick={() => deleteItemCompletely(item.product. product_id)}
+                    className="text-gray-300 hover:text-red-500 font-bold text-xl px-2"
+                  >
+                    ×
+                  </button>
                 </div>
 
                 <div className="flex justify-between items-end pl-[52px]">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">¥{item.product.price.toLocaleString()} / unit</p>
-                  <p className="font-black text-blue-600 text-lg">¥{(item.product.price * item. quantity).toLocaleString()}</p>
+                  <p className="text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+                    ¥{item.product.price.toLocaleString()} / unit
+                  </p>
+                  <p className="font-black text-blue-600 text-lg">
+                    ¥{(item.product.price * item.quantity).toLocaleString()}
+                  </p>
                 </div>
               </div>
             ))
@@ -231,14 +263,14 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId }) => {
         <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">Total</span>
-            <span className="text-4xl font-black text-gray-900 tracking-tighter">¥{totalAmount. toLocaleString()}</span>
+            <span className="text-4xl font-black text-gray-900 tracking-tighter">¥{totalAmount.toLocaleString()}</span>
           </div>
-          <button 
+          <button
             onClick={handleConfirmOrder}
             disabled={cart.length === 0 || ordering}
             className="w-full py-5 bg-gray-900 text-white rounded-[2rem] font-black text-xl hover:bg-blue-600 active:scale-[0.98] transition-all disabled:bg-gray-100 disabled:text-gray-300 shadow-lg"
           >
-            {ordering ? '処理中.. .' : '注文を確定する'}
+            {ordering ? '処理中...' : '注文を確定する'}
           </button>
         </div>
       </div>
