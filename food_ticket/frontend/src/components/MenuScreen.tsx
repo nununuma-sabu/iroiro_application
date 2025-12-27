@@ -6,19 +6,20 @@ import type { OrderCreate } from '../types/order';
 
 interface MenuScreenProps {
   storeId: number;
-  attributeId:  number; // 🆕 顧客属性IDを受け取る
+  attributeId: number;
 }
 
 interface CartItem {
-  product:  Product;
+  product: Product;
   quantity: number;
 }
 
-const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
+const MenuScreen:  React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string>('すべて'); // 🆕 選択中のカテゴリ
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -64,7 +65,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
       const existing = prev.find((item) => item.product.product_id === productId);
       if (existing && existing.quantity > 1) {
         return prev.map((item) =>
-          item.product. product_id === productId ? { ...item, quantity: item.quantity - 1 } : item
+          item.product. product_id === productId ?  { ...item, quantity: item. quantity - 1 } : item
         );
       }
       return prev.filter((item) => item.product.product_id !== productId);
@@ -84,9 +85,8 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     return item ? item.quantity : 0;
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + item.product. price * item.quantity, 0);
+  const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
-  // 注文確定処理（attributeIdを使用）
   const handleConfirmOrder = async () => {
     if (cart.length === 0) return;
 
@@ -99,7 +99,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     try {
       const orderData: OrderCreate = {
         store_id: storeId,
-        attribute_id: attributeId, // 🆕 登録済みの顧客属性IDを使用
+        attribute_id: attributeId,
         items: cart.map((item) => ({
           product_id: item.product.product_id,
           quantity: item.quantity,
@@ -107,7 +107,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
         })),
         total_amount: totalAmount,
         payment_method: '現金',
-        take_out_type:  '店内',
+        take_out_type: '店内',
       };
 
       const response = await createOrder(orderData);
@@ -126,6 +126,14 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     }
   };
 
+  // 🆕 カテゴリ一覧を取得（重複なし）
+  const categories = ['すべて', ... Array.from(new Set(products. map((p) => p.category_name)))];
+
+  // 🆕 選択中のカテゴリで商品をフィルタリング
+  const filteredProducts = selectedCategory === 'すべて'
+    ? products
+    : products.filter((p) => p.category_name === selectedCategory);
+
   if (loading) return <div className="p-10 text-center text-gray-400 font-sans">読み込み中...</div>;
 
   return (
@@ -134,11 +142,28 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
       <div className="flex-grow p-6 lg:p-10">
         <div className="max-w-5xl mx-auto">
           <header className="mb-8">
-            <h2 className="text-3xl font-black text-gray-900 tracking-tight">Menu</h2>
+            <h2 className="text-3xl font-black text-gray-900 tracking-tight mb-6">Menu</h2>
+            
+            {/* 🆕 カテゴリタブ */}
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {categories.map((category) => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-6 py-3 rounded-2xl font-bold text-sm whitespace-nowrap transition-all ${
+                    selectedCategory === category
+                      ? 'bg-blue-600 text-white shadow-lg scale-105'
+                      : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
           </header>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8">
-            {products.map((product) => {
+            {filteredProducts. map((product) => {
               const qty = getItemQuantity(product. product_id);
               return (
                 <div
@@ -147,7 +172,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                 >
                   <div className="aspect-square rounded-[1.5rem] mb-4 overflow-hidden relative bg-gray-100">
                     <img
-                      src={getProductImage(product.product_name)}
+                      src={getProductImage(product. product_name)}
                       alt={product.product_name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                     />
@@ -181,6 +206,15 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
               );
             })}
           </div>
+
+          {/* 🆕 商品が0件の場合のメッセージ */}
+          {filteredProducts.length === 0 && (
+            <div className="text-center py-20">
+              <p className="text-gray-400 text-lg font-medium">
+                このカテゴリには商品がありません
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -217,11 +251,11 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                       className="w-10 h-10 rounded-lg object-cover shadow-sm"
                     />
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product. product_name}</p>
+                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product.product_name}</p>
 
                       <div className="flex items-center bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
                         <button
-                          onClick={() => removeFromCart(item. product.product_id)}
+                          onClick={() => removeFromCart(item.product.product_id)}
                           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-red-500 font-bold"
                         >
                           －
@@ -230,7 +264,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                           {item.quantity}
                         </span>
                         <button
-                          onClick={() => addToCart(item. product)}
+                          onClick={() => addToCart(item.product)}
                           className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-blue-600 font-bold"
                         >
                           ＋
