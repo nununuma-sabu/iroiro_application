@@ -11,7 +11,7 @@ from app.db import models
 from app.db.session import SessionLocal
 from app.core import security
 
-# 管理画面用ルーターをインポート
+# 🆕 管理画面用ルーターをインポート
 from app.routers import admin
 
 app = FastAPI(title="食券機シミュレーター API")
@@ -23,7 +23,6 @@ origins = [
     "http://0.0.0.0:5173",
 ]
 
-# CORS設定
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
@@ -51,7 +50,7 @@ class OrderCreate(BaseModel):
     take_out_type: str
 
 
-# 顧客属性登録用スキーマ
+# 🆕 顧客属性登録用スキーマ
 class CustomerAttributeCreate(BaseModel):
     store_id: int
     age_group: str
@@ -142,7 +141,7 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
     return results
 
 
-# 顧客属性登録API
+# 🆕 顧客属性登録API
 @app.post("/customer-attributes")
 def create_customer_attribute(
     attribute_data: CustomerAttributeCreate, db: Session = Depends(get_db)
@@ -228,15 +227,3 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         if isinstance(e, HTTPException):
             raise e
         raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/categories")
-def get_categories(db: Session = Depends(get_db)):
-    """
-    全カテゴリを取得（顧客画面用）
-    """
-    categories = db.query(models.Category).all()
-    return [
-        {"category_id": cat.category_id, "category_name": cat.category_name}
-        for cat in categories
-    ]

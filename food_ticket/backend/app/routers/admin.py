@@ -1,7 +1,9 @@
 # app/routers/admin.py
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
+import shutil
+from pathlib import Path
 
 from app.db.session import SessionLocal
 from app.db import models
@@ -112,3 +114,212 @@ def delete_category(category_id: int, db: Session = Depends(get_db)):
     db.commit()
 
     return {"status": "success", "message": "カテゴリを削除しました"}
+
+
+# ==================== 商品管理API ====================
+
+
+@router.get("/products", response_model=List[admin_schemas.ProductDetailResponse])
+def get_all_products(category_id: int = None, db: Session = Depends(get_db)):
+    """全商品を取得（カテゴリでフィルター可能）"""
+    query = (
+        db.query(
+            models.Product.product_id,
+            models.Product.product_name,
+            models.Product.category_id,
+            models.Category.category_name,
+            models.Product.standard_price,
+            models.Product.image_url,
+            models.StoreInventory.current_stock.label("stock"),
+            models.StoreInventory.is_on_sale,
+        )
+        .join(models.Category)
+        .outerjoin(
+            models.StoreInventory,
+            (models.StoreInventory.product_id == models.Product.product_id)
+            & (models.StoreInventory.store_id == 1),  # デフォルト店舗
+        )
+    )
+
+    if category_id:
+        query = query.filter(models.Product.category_id == category_id)
+
+    products = query.all()
+
+    return [
+        {
+            "product_id": p.product_id,
+            "product_name": p.product_name,
+            "category_id": p.category_id,
+            "category_name": p.category_name,
+            "standard_price": p.standard_price,
+            "image_url": p.image_url,
+            "stock": p.stock,
+            "is_on_sale": p.is_on_sale,
+        }
+        for p in products
+    ]
+
+
+@router.post("/products", response_model=admin_schemas.ProductResponse)
+def create_product(
+    product_data: admin_schemas.ProductCreate, db: Session = Depends(get_db)
+):
+    """新しい商品を追加"""
+    # カテゴリの存在確認
+    category = (
+        db.query(models.Category)
+        .filter_by(category_id=product_data.category_id)
+        .first()
+    )
+    if not category:
+        raise HTTPException(
+            status_code=404, detail="指定されたカテゴリが見つかりません"
+        )
+
+    # 商品作成
+    new_product = models.Product(
+        product_name=product_data.product_name,
+        category_id=product_data.category_id,
+        standard_price=product_data.standard_price,
+        image_url=product_data.image_url,
+    )
+
+    db.add(new_product)
+    db.flush()
+
+    # 在庫情報も作成（initial_stockが指定されている場合）
+    if product_data.initial_stock is not None:
+        inventory = models.StoreInventory(
+            store_id=1,  # デフォルト店舗
+            product_id=new_product.product_id,
+            current_stock=product_data.initial_stock,
+            is_on_sale=True,
+        )
+        db.add(inventory)
+
+    db.commit()
+    db.refresh(new_product)
+
+    return {
+        "product_id": new_product.product_id,
+        "product_name": new_product.product_name,
+        "category_id": new_product.category_id,
+        "category_name": category.category_name,
+        "standard_price": new_product.standard_price,
+        "image_url": new_product.image_url,
+    }
+
+
+@router.put("/products/{product_id}", response_model=admin_schemas.ProductResponse)
+def update_product(
+    product_id: int,
+    product_data: admin_schemas.ProductUpdate,
+    db: Session = Depends(get_db),
+):
+    """商品情報を更新"""
+    product = db.query(models.Product).filter_by(product_id=product_id).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="商品が見つかりません")
+
+    # カテゴリ変更時の存在確認
+    if product_data.category_id is not None:
+        category = (
+            db.query(models.Category)
+            .filter_by(category_id=product_data.category_id)
+            .first()
+        )
+        if not category:
+            raise HTTPException(
+                status_code=404, detail="指定されたカテゴリが見つかりません"
+            )
+        product.category_id = product_data.category_id
+
+    # その他のフィールド更新
+    if product_data.product_name is not None:
+        product.product_name = product_data.product_name
+    if product_data.standard_price is not None:
+        product.standard_price = product_data.standard_price
+    if product_data.image_url is not None:
+        product.image_url = product_data.image_url
+
+    db.commit()
+    db.refresh(product)
+
+    # カテゴリ名を取得
+    category = (
+        db.query(models.Category).filter_by(category_id=product.category_id).first()
+    )
+
+    return {
+        "product_id": product.product_id,
+        "product_name": product.product_name,
+        "category_id": product.category_id,
+        "category_name": category.category_name,
+        "standard_price": product.standard_price,
+        "image_url": product.image_url,
+    }
+
+
+@router.delete("/products/{product_id}")
+def delete_product(product_id: int, db: Session = Depends(get_db)):
+    """商品を削除"""
+    product = db.query(models.Product).filter_by(product_id=product_id).first()
+
+    if not product:
+        raise HTTPException(status_code=404, detail="商品が見つかりません")
+
+    # 在庫情報も削除
+    db.query(models.StoreInventory).filter_by(product_id=product_id).delete()
+
+    # 注文履歴がある場合は警告（削除は許可）
+    order_count = db.query(models.OrderDetail).filter_by(product_id=product_id).count()
+
+    db.delete(product)
+    db.commit()
+
+    message = "商品を削除しました"
+    if order_count > 0:
+        message += f"（注文履歴 {order_count} 件が存在します）"
+
+    return {"status": "success", "message": message}
+
+
+# ==================== 画像アップロードAPI ====================
+
+
+@router.post("/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    """商品画像をアップロード"""
+    # ファイル形式の検証
+    allowed_extensions = {". jpg", ".jpeg", ".png", ".webp"}
+    file_ext = Path(file.filename).suffix.lower()
+
+    if file_ext not in allowed_extensions:
+        raise HTTPException(
+            status_code=400,
+            detail="画像ファイル（jpg, jpeg, png, webp）のみアップロード可能です",
+        )
+
+    # 保存先ディレクトリ
+    upload_dir = Path("../frontend/public/images")
+    upload_dir.mkdir(parents=True, exist_ok=True)
+
+    # ファイル名を一意にする（タイムスタンプ付き）
+    import time
+
+    timestamp = int(time.time())
+    filename = f"{timestamp}_{file.filename}"
+    file_path = upload_dir / filename
+
+    # ファイル保存
+    try:
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail=f"ファイル保存に失敗しました: {str(e)}"
+        )
+
+    return {"status": "success", "image_url": f"/images/{filename}"}
