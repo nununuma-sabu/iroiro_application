@@ -2,7 +2,6 @@
 import sys
 import os
 
-# プロジェクトのルートディレクトリをパスに追加（scriptsフォルダから実行する場合に必要）
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from sqlalchemy.orm import Session
@@ -50,47 +49,57 @@ def seed_data():
             db.add(store)
             db.flush()
 
-        # 4. カテゴリ
-        if not db.query(models.Category).filter_by(category_id=1).first():
-            cat_set = models.Category(category_id=1, category_name="定食")
-            cat_side = models.Category(category_id=2, category_name="サイドメニュー")
-            db.add_all([cat_set, cat_side])
-            db.flush()
+        # 4. カテゴリ（🔥 修正:  サイドメニューも追加）
+        categories_data = [
+            (1, "定食"),
+            (2, "単品"),
+            (3, "サイドメニュー"),  # 🆕 ID変更
+        ]
+
+        for cat_id, cat_name in categories_data:
+            existing = db.query(models.Category).filter_by(category_id=cat_id).first()
+            if not existing:
+                category = models.Category(category_id=cat_id, category_name=cat_name)
+                db.add(category)
+
+        db.flush()
 
         # 5. 商品（画像URLを含む）
         if not db.query(models.Product).filter_by(product_id=1).first():
-            p1 = models.Product(
-                product_id=1,
-                category_id=1,
-                product_name="ハンバーグ定食",
-                standard_price=850,
-                image_url="/images/hamburg.jpg",  # 🆕 画像URL追加
-            )
-            p2 = models.Product(
-                product_id=2,
-                category_id=1,
-                product_name="からあげ定食",
-                standard_price=750,
-                image_url="/images/karaage.jpg",  # 🆕 画像URL追加
-            )
-            p3 = models.Product(
-                product_id=3,
-                category_id=2,
-                product_name="フライドポテト",
-                standard_price=300,
-                image_url="/images/potato.jpg",  # 🆕 画像URL追加
-            )
-            p4 = models.Product(
-                product_id=4,
-                category_id=1,
-                product_name="とんかつ定食",
-                standard_price=900,
-                image_url="/images/tonkatsu.jpg",  # 🆕 画像URL追加（とんかつの画像が必要）
-            )
-            db.add_all([p1, p2, p3, p4])
+            products = [
+                models.Product(
+                    product_id=1,
+                    category_id=1,  # 定食
+                    product_name="ハンバーグ定食",
+                    standard_price=850,
+                    image_url="/images/hamburg.jpg",
+                ),
+                models.Product(
+                    product_id=2,
+                    category_id=1,  # 定食
+                    product_name="からあげ定食",
+                    standard_price=750,
+                    image_url="/images/karaage.jpg",
+                ),
+                models.Product(
+                    product_id=3,
+                    category_id=3,  # サイドメニュー
+                    product_name="フライドポテト",
+                    standard_price=300,
+                    image_url="/images/potato.jpg",
+                ),
+                models.Product(
+                    product_id=4,
+                    category_id=1,  # 定食
+                    product_name="とんかつ定食",
+                    standard_price=900,
+                    image_url="/images/tonkatsu.jpg",
+                ),
+            ]
+            db.add_all(products)
             db.flush()
 
-            # 6. 店舗在庫 (新宿本店に在庫を紐付け)
+            # 6. 店舗在庫
             inventory_list = [
                 models.StoreInventory(
                     store_id=1, product_id=1, current_stock=50, is_on_sale=True
