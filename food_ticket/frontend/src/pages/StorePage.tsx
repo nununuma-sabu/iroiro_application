@@ -36,7 +36,7 @@ function StorePage() {
         useFaceRecognition ? (
           /* --- 顔認証画面 --- */
           <FaceRecognitionScreen
-            storeId={storeInfo. id}
+            storeId={storeInfo.id}
             onAttributeRegistered={handleAttributeRegistered}
             onSkip={handleSkipFaceRecognition}
           />
@@ -71,7 +71,7 @@ function StorePage() {
               <div>
                 <h1 className="text-xl font-black tracking-tight">{storeInfo.name}</h1>
                 <p className="text-xs text-gray-500 font-medium">
-                  {storeInfo.prefecture} {storeInfo. municipality}
+                  {storeInfo.prefecture} {storeInfo.municipality}
                 </p>
               </div>
             </div>

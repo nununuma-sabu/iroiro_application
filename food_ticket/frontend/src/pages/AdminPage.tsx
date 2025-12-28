@@ -1,5 +1,6 @@
 import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import CategoryManager from '../components/admin/CategoryManager';
+import ProductManager from '../components/admin/ProductManager';
 
 function AdminPage() {
   const location = useLocation();
@@ -76,7 +77,7 @@ function AdminPage() {
         <main className="flex-1 p-6">
           <Routes>
             <Route path="categories" element={<CategoryManager />} />
-            <Route path="products" element={<div>商品管理（未実装）</div>} />
+            <Route path="products" element={<ProductManager />} />
             <Route path="inventory" element={<div>在庫管理（未実装）</div>} />
             <Route path="analytics" element={<div>売上分析（未実装）</div>} />
             <Route path="/" element={<div className="text-center text-gray-500 mt-20">左のメニューから選択してください</div>} />
