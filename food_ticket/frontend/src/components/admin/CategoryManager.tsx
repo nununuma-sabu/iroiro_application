@@ -1,17 +1,10 @@
-// src/components/admin/CategoryManager.tsx
+// src/components/admin/CategoryManager. tsx
 import React, { useState, useEffect } from 'react';
-import {
-  getCategories,
-  createCategory,
-  updateCategory,
-  deleteCategory,
-  type Category,
-  type CategoryCreate,
-} from '../../api/admin';
+import * as adminApi from '../../api/admin';
 import './CategoryManager.css';
 
 const CategoryManager: React.FC = () => {
-  const [categories, setCategories] = useState<Category[]>([]);
+  const [categories, setCategories] = useState<adminApi.Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -22,7 +15,7 @@ const CategoryManager: React.FC = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const data = await getCategories();
+      const data = await adminApi.getCategories();
       setCategories(data);
       setError(null);
     } catch (err) {
@@ -41,13 +34,13 @@ const CategoryManager: React.FC = () => {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newCategoryName.trim()) {
+    if (!newCategoryName. trim()) {
       alert('カテゴリ名を入力してください');
       return;
     }
 
     try {
-      await createCategory({ category_name: newCategoryName });
+      await adminApi.createCategory({ category_name: newCategoryName });
       setNewCategoryName('');
       fetchCategories();
       alert('✅ カテゴリを追加しました');
@@ -57,20 +50,20 @@ const CategoryManager: React.FC = () => {
   };
 
   // カテゴリ編集開始
-  const startEdit = (category: Category) => {
+  const startEdit = (category: adminApi. Category) => {
     setEditingId(category.category_id);
     setEditingName(category.category_name);
   };
 
   // カテゴリ更新
   const handleUpdate = async (categoryId: number) => {
-    if (!editingName. trim()) {
+    if (!editingName.trim()) {
       alert('カテゴリ名を入力してください');
       return;
     }
 
     try {
-      await updateCategory(categoryId, { category_name: editingName });
+      await adminApi.updateCategory(categoryId, { category_name: editingName });
       setEditingId(null);
       setEditingName('');
       fetchCategories();
@@ -87,7 +80,7 @@ const CategoryManager: React.FC = () => {
     }
 
     try {
-      await deleteCategory(categoryId);
+      await adminApi. deleteCategory(categoryId);
       fetchCategories();
       alert('✅ カテゴリを削除しました');
     } catch (err: any) {
@@ -140,7 +133,7 @@ const CategoryManager: React.FC = () => {
             <tbody>
               {categories. map((category) => (
                 <tr key={category.category_id}>
-                  <td>{category.category_id}</td>
+                  <td>{category. category_id}</td>
                   <td>
                     {editingId === category.category_id ? (
                       <input
