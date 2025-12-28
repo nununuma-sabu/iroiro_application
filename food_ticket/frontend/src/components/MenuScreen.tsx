@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { getStoreProducts } from '../api/store';
+import { getStoreProducts, getAllCategories, type Category } from '../api/store';
 import { createOrder } from '../api/order';
 import type { Product } from '../types/store';
 import type { OrderCreate } from '../types/order';
@@ -10,57 +10,62 @@ interface MenuScreenProps {
 }
 
 interface CartItem {
-  product:  Product;
+  product: Product;
   quantity: number;
 }
 
-// 🆕 カテゴリごとのデフォルト画像
+// カテゴリごとのデフォルト画像
 const DEFAULT_IMAGES:  Record<string, string> = {
   '定食': 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400',
   'サイドメニュー': 'https://images.unsplash.com/photo-1573080496219-bb080dd4f877?w=400',
-  'ドリンク': 'https://images.unsplash.com/photo-1437418747212-8d9709afab22?w=400',
   '単品': 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=400',
+  'ドリンク': 'https://images.unsplash.com/photo-1437418747212-8d9709afab22?w=400',
   'デザート': 'https://images.unsplash.com/photo-1563805042-7684c019e1cb?w=400',
+  'スープ': 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=400',
+  'サラダ': 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=400',
 };
 
 const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string>('すべて');
 
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchData = async () => {
       try {
-        const data = await getStoreProducts(storeId);
-        setProducts(data || []);
+        // 商品とカテゴリを並行取得
+        const [productsData, categoriesData] = await Promise.all([
+          getStoreProducts(storeId),
+          getAllCategories(),
+        ]);
+        
+        setProducts(productsData || []);
+        setCategories(categoriesData || []);
       } catch (error) {
-        console.error('Failed to fetch products:', error);
+        console.error('Failed to fetch data:', error);
       } finally {
         setLoading(false);
       }
     };
-    fetchProducts();
+    fetchData();
   }, [storeId]);
 
-  // 🆕 改修後のgetProductImage関数
   const getProductImage = (product: Product): string => {
-    // 1. DBに画像URLがあればそれを使用
     if (product.image_url) {
-      return product.image_url;
+      return product. image_url;
     }
     
-    // 2. カテゴリのデフォルト画像
     if (DEFAULT_IMAGES[product.category_name]) {
       return DEFAULT_IMAGES[product.category_name];
     }
     
-    // 3. 最終的なフォールバック
     return `https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80`;
   };
 
-  const addToCart = (product: Product) => {
+  const addToCart = (product:  Product) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.product.product_id === product.product_id);
       if (existing) {
@@ -97,7 +102,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     return item ? item.quantity : 0;
   };
 
-  const totalAmount = cart.reduce((sum, item) => sum + item.product. price * item.quantity, 0);
+  const totalAmount = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   const handleConfirmOrder = async () => {
     if (cart.length === 0) return;
@@ -138,7 +143,8 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     }
   };
 
-  const categories = ['すべて', ... Array.from(new Set(products. map((p) => p.category_name)))];
+  // カテゴリタブ:  すべて + 全カテゴリ
+  const categoryTabs = ['すべて', ... categories.map((c) => c.category_name)];
 
   const filteredProducts = selectedCategory === 'すべて'
     ? products
@@ -156,7 +162,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
             
             {/* カテゴリタブ */}
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {categories. map((category) => (
+              {categoryTabs.map((category) => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
@@ -186,8 +192,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                       alt={product.product_name}
                       className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
                       onError={(e) => {
-                        // 🆕 画像読み込みエラー時のフォールバック
-                        e.currentTarget.src = DEFAULT_IMAGES[product.category_name] || 
+                        e.currentTarget.src = DEFAULT_IMAGES[product. category_name] || 
                           'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400';
                       }}
                     />
@@ -255,7 +260,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
             cart.map((item) => (
               <div
                 key={item.product.product_id}
-                className="bg-gray-50/70 rounded-3xl p-5 border border-gray-100 animate-in fade-in slide-in-from-right-3"
+                className="bg-gray-50/70 rounded-3xl p-5 border border-gray-100"
               >
                 <div className="flex justify-between items-center mb-4">
                   <div className="flex items-center gap-3">
@@ -269,7 +274,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                       }}
                     />
                     <div className="flex items-center gap-2">
-                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product. product_name}</p>
+                      <p className="font-bold text-gray-800 text-sm leading-tight">{item.product.product_name}</p>
 
                       <div className="flex items-center bg-white rounded-lg border border-gray-200 p-0.5 shadow-sm">
                         <button
@@ -303,7 +308,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
                     ¥{item.product.price.toLocaleString()} / unit
                   </p>
                   <p className="font-black text-blue-600 text-lg">
-                    ¥{(item.product.price * item. quantity).toLocaleString()}
+                    ¥{(item.product.price * item.quantity).toLocaleString()}
                   </p>
                 </div>
               </div>
@@ -311,7 +316,6 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
           )}
         </div>
 
-        {/* 合計金額と確定ボタン */}
         <div className="mt-8 pt-6 border-t border-dashed border-gray-200">
           <div className="flex justify-between items-center mb-6">
             <span className="text-gray-400 font-bold text-xs uppercase tracking-widest">Total</span>
