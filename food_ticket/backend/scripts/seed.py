@@ -57,33 +57,36 @@ def seed_data():
             db.add_all([cat_set, cat_side])
             db.flush()
 
-        # 5. 商品
+        # 5. 商品（画像URLを含む）
         if not db.query(models.Product).filter_by(product_id=1).first():
             p1 = models.Product(
                 product_id=1,
                 category_id=1,
                 product_name="ハンバーグ定食",
                 standard_price=850,
+                image_url="/images/hamburg.jpg",  # 🆕 画像URL追加
             )
             p2 = models.Product(
                 product_id=2,
                 category_id=1,
                 product_name="からあげ定食",
                 standard_price=750,
+                image_url="/images/karaage.jpg",  # 🆕 画像URL追加
             )
             p3 = models.Product(
                 product_id=3,
-                category_id=1,
-                product_name="とんかつ定食",
-                standard_price=900,
-            )
-            p4 = models.Product(
-                product_id=4,
                 category_id=2,
                 product_name="フライドポテト",
                 standard_price=300,
+                image_url="/images/potato.jpg",  # 🆕 画像URL追加
             )
-
+            p4 = models.Product(
+                product_id=4,
+                category_id=1,
+                product_name="とんかつ定食",
+                standard_price=900,
+                image_url="/images/tonkatsu.jpg",  # 🆕 画像URL追加（とんかつの画像が必要）
+            )
             db.add_all([p1, p2, p3, p4])
             db.flush()
 
@@ -96,10 +99,10 @@ def seed_data():
                     store_id=1, product_id=2, current_stock=30, is_on_sale=True
                 ),
                 models.StoreInventory(
-                    store_id=1, product_id=3, current_stock=40, is_on_sale=True
+                    store_id=1, product_id=3, current_stock=100, is_on_sale=True
                 ),
                 models.StoreInventory(
-                    store_id=1, product_id=4, current_stock=100, is_on_sale=True
+                    store_id=1, product_id=4, current_stock=40, is_on_sale=True
                 ),
             ]
             db.add_all(inventory_list)
@@ -108,7 +111,7 @@ def seed_data():
         print("初期データの投入が完了しました！")
 
     except Exception as e:
-        print(f"エラーが発生しました: {e}")
+        print(f"エラーが発生しました:  {e}")
         db.rollback()
     finally:
         db.close()

@@ -1,25 +1,18 @@
-"""
-各店舗の在庫情報と売上データを初期状態に戻すスクリプト
-
-機能:
-- 売上データ（orders, order_details, customer_attributes）を削除
-- 在庫情報（store_inventories）を初期値に戻す
-"""
-
+# scripts/reset_store_data.py
 import sys
-from pathlib import Path
+import os
 
-# backend/app をインポートパスに追加
-backend_path = Path(__file__).parent / "backend"
-sys.path.append(str(backend_path))
+# プロジェクトのルートディレクトリをパスに追加（scriptsフォルダから実行する場合に必要）
+sys.path.append(os.path.join(os.path.dirname(__file__), ".. "))
 
-from app.db.database import SessionLocal
+from sqlalchemy.orm import Session
+from app.db.session import SessionLocal
 from app.db import models
 
 
 def reset_store_data():
     """在庫と売上データを初期化"""
-    db = SessionLocal()
+    db: Session = SessionLocal()
 
     try:
         print("=" * 50)
@@ -42,12 +35,12 @@ def reset_store_data():
         # 2. 在庫情報を初期値に戻す
         print("\n[4/4] 在庫情報を初期値にリセット中...")
 
-        # 初期在庫の定義
+        # 初期在庫の定義（seed.py + とんかつ定食を追加）
         initial_stocks = {
             (1, 1): {"current_stock": 50, "is_on_sale": True},  # ハンバーグ定食
             (1, 2): {"current_stock": 30, "is_on_sale": True},  # からあげ定食
-            (1, 3): {"current_stock": 100, "is_on_sale": True},  # とんかつ定食
-            (1, 4): {"current_stock": 40, "is_on_sale": True},  # フライドポテト
+            (1, 3): {"current_stock": 100, "is_on_sale": True},  # フライドポテト
+            (1, 4): {"current_stock": 40, "is_on_sale": True},  # とんかつ定食 🆕
         }
 
         reset_count = 0
@@ -96,8 +89,6 @@ def reset_store_data():
 
 
 if __name__ == "__main__":
-    import warnings
-
     print("\n⚠️  警告: このスクリプトは売上データを完全に削除します！")
     response = input("本当に実行しますか？ (yes/no): ")
 
