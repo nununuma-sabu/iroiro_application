@@ -73,11 +73,18 @@ def seed_data():
             )
             p3 = models.Product(
                 product_id=3,
+                category_id=1,
+                product_name="とんかつ定食",
+                standard_price=900,
+            )
+            p4 = models.Product(
+                product_id=4,
                 category_id=2,
                 product_name="フライドポテト",
                 standard_price=300,
             )
-            db.add_all([p1, p2, p3])
+
+            db.add_all([p1, p2, p3, p4])
             db.flush()
 
             # 6. 店舗在庫 (新宿本店に在庫を紐付け)
@@ -89,7 +96,10 @@ def seed_data():
                     store_id=1, product_id=2, current_stock=30, is_on_sale=True
                 ),
                 models.StoreInventory(
-                    store_id=1, product_id=3, current_stock=100, is_on_sale=True
+                    store_id=1, product_id=3, current_stock=40, is_on_sale=True
+                ),
+                models.StoreInventory(
+                    store_id=1, product_id=4, current_stock=100, is_on_sale=True
                 ),
             ]
             db.add_all(inventory_list)
