@@ -1,0 +1,15 @@
+.current-time {
+  font-size: 1.2rem;
+  font-weight: bold;
+  padding: 12px 20px;
+  text-align: left;
+  color: #2c3e50;
+  background:  linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  letter-spacing: 0.5px;
+}
