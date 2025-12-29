@@ -27,6 +27,7 @@
 - ✅ **商品閲覧** - カテゴリ別の商品表示（動的カテゴリ対応）
 - ✅ **カート機能** - 商品の追加・削除・数量変更
 - ✅ **注文確定** - 在庫の自動減少、注文履歴の保存
+- ✅ **現在時刻表示** - 全ページに現在時刻をリアルタイム表示
 
 ### 管理者向け機能
 - ✅ **カテゴリ管理** - カテゴリの追加・編集・削除（CRUD操作）
@@ -176,10 +177,13 @@ food_ticket/
     │   │   └── order.ts       # 注文API関数
     │   ├── components/        # Reactコンポーネント
     │   │   ├── admin/
-    │   │   │   ├── CategoryManager. tsx
+    │   │   │   ├── CategoryManager.tsx
     │   │   │   ├── CategoryManager.css
     │   │   │   ├── ProductManager.tsx
     │   │   │   └── ProductManager.css
+    │   │   ├── CurrentTime.tsx      # 現在時刻表示コンポーネント
+    │   │   ├── CurrentTime.css
+    │   │   ├── Header.tsx           # 共通ヘッダー
     │   │   ├── LoginScreen.tsx
     │   │   ├── FaceRecognitionScreen.tsx
     │   │   ├── CustomerAttributeScreen.tsx
@@ -202,7 +206,39 @@ food_ticket/
 
 ## 🔄 開発履歴
 
-### 2025-12-28:  管理画面の実装
+### 2025-12-29:  現在時刻表示機能の実装
+
+#### 実装内容
+- **全ページ共通ヘッダーに現在時刻を表示**
+  - `frontend/src/components/CurrentTime.tsx` を作成
+  - `frontend/src/components/CurrentTime.css` を作成
+  - `frontend/src/components/Header.tsx` を作成
+  - `frontend/src/App.tsx` を更新してHeaderを全ページに適用
+
+#### 機能詳細
+- **リアルタイム更新**:  1秒ごとに自動的に時刻を更新
+- **日本語フォーマット**: `YYYY年MM月DD日(曜日) HH:MI: SS` 形式で表示
+- **スティッキーヘッダー**: スクロールしても画面上部に固定表示
+- **レスポンシブデザイン**: グラデーション背景とシャドウ効果
+
+```typescript
+// CurrentTime.tsx の実装例
+const formatTime = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const weekday = weekdays[date.getDay()];
+
+  return `${year}年${month}月${day}日(${weekday}) ${hours}:${minutes}: ${seconds}`;
+};
+```
+
+### 2025-12-28: 管理画面の実装
 
 #### Step 1: API基盤の共通化
 - **実装内容**
@@ -358,7 +394,7 @@ useEffect(() => {
     "product_name": "ハンバーグ定食",
     "category_name": "定食",
     "price": 850,
-    "stock":  50,
+    "stock": 50,
     "image_url":  "/images/hamburg.jpg"
   }
 ]
@@ -389,7 +425,7 @@ useEffect(() => {
 ```json
 {
   "status": "success",
-  "order_id": 1
+  "order_id":  1
 }
 ```
 
@@ -420,7 +456,7 @@ useEffect(() => {
 
 **`PUT /admin/categories/{category_id}`** - カテゴリ更新
 
-リクエスト: 
+リクエスト:
 ```json
 {
   "category_name": "ソフトドリンク"
@@ -466,9 +502,9 @@ useEffect(() => {
 ```json
 {
   "product_name": "コーラ",
-  "category_id":  2,
+  "category_id": 2,
   "standard_price": 350,
-  "image_url": "/images/cola. jpg",
+  "image_url": "/images/cola.jpg",
   "initial_stock": 99
 }
 ```
@@ -505,7 +541,7 @@ useEffect(() => {
 ```json
 {
   "status": "success",
-  "image_url": "/images/1735380123_product. jpg"
+  "image_url": "/images/1735380123_product.jpg"
 }
 ```
 
