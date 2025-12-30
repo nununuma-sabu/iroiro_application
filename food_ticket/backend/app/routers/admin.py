@@ -293,7 +293,7 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 async def upload_image(file: UploadFile = File(...)):
     """商品画像をアップロード"""
     # ファイル形式の検証
-    allowed_extensions = {". jpg", ".jpeg", ".png", ".webp"}
+    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
     file_ext = Path(file.filename).suffix.lower()
 
     if file_ext not in allowed_extensions:
