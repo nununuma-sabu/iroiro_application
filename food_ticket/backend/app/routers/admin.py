@@ -293,16 +293,16 @@ def delete_product(product_id: int, db: Session = Depends(get_db)):
 async def upload_image(file: UploadFile = File(...)):
     """商品画像をアップロード"""
     # ファイル形式の検証
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
+    allowed_extensions = {". jpg", ".jpeg", ".png", ".webp"}
     file_ext = Path(file.filename).suffix.lower()
 
     if file_ext not in allowed_extensions:
         raise HTTPException(
             status_code=400,
-            detail="画像ファイル（jpg, jpeg, png, webp）のみアップロード可能です",
+            detail="画像ファイル(jpg, jpeg, png, webp)のみアップロード可能です",
         )
 
-    # 保存先ディレクトリ（絶対パスで指定）
+    # 保存先ディレクトリ(絶対パスで指定)
     import os
 
     # バックエンドの親ディレクトリ -> food_ticket -> frontend -> public -> images
@@ -314,11 +314,8 @@ async def upload_image(file: UploadFile = File(...)):
     # ディレクトリが存在しない場合は作成
     upload_dir.mkdir(parents=True, exist_ok=True)
 
-    # ファイル名を一意にする（タイムスタンプ付き）
-    import time
-
-    timestamp = int(time.time())
-    filename = f"{timestamp}_{file.filename}"
+    # 元のファイル名をそのまま使用
+    filename = file.filename
     file_path = upload_dir / filename
 
     # ファイル保存
