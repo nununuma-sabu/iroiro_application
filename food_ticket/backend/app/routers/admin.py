@@ -1,7 +1,7 @@
 # app/routers/admin.py
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 import shutil
 from pathlib import Path
 
@@ -12,7 +12,7 @@ from app.schemas import admin as admin_schemas
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
-# 依存関係:  DBセッション
+# 依存関係:   DBセッション
 def get_db():
     db = SessionLocal()
     try:
@@ -324,7 +324,106 @@ async def upload_image(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, buffer)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"ファイル保存に失敗しました: {str(e)}"
+            status_code=500, detail=f"ファイル保存に失敗しました:  {str(e)}"
         )
 
     return {"status": "success", "image_url": f"/images/{filename}"}
+
+
+# ==================== 在庫管理API ====================
+
+
+@router.get("/inventories", response_model=List[admin_schemas.InventoryResponse])
+def get_inventories(
+    store_id: int = 1,
+    category_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+):
+    """在庫一覧を取得（店舗IDとカテゴリでフィルター可能）"""
+    query = (
+        db.query(
+            models.StoreInventory.store_id,
+            models.StoreInventory.product_id,
+            models.Product.product_name,
+            models.Category.category_name,
+            models.Product.standard_price,
+            models.Product.image_url,
+            models.StoreInventory.current_stock,
+            models.StoreInventory.is_on_sale,
+        )
+        .join(models.Product)
+        .join(models.Category)
+        .filter(models.StoreInventory.store_id == store_id)
+    )
+
+    if category_id:
+        query = query.filter(models.Product.category_id == category_id)
+
+    inventories = query.all()
+
+    return [
+        {
+            "inventory_id": i.store_id * 10000 + i.product_id,  # 擬似的なID
+            "store_id": i.store_id,
+            "product_id": i.product_id,
+            "product_name": i.product_name,
+            "category_name": i.category_name,
+            "standard_price": i.standard_price,
+            "image_url": i.image_url,
+            "current_stock": i.current_stock,
+            "is_on_sale": i.is_on_sale,
+        }
+        for i in inventories
+    ]
+
+
+@router.put("/inventories/{store_id}/{product_id}/stock")
+def update_inventory_stock(
+    store_id: int,
+    product_id: int,
+    stock_data: admin_schemas.InventoryUpdateStock,
+    db: Session = Depends(get_db),
+):
+    """在庫数を更新"""
+    inventory = (
+        db.query(models.StoreInventory)
+        .filter_by(store_id=store_id, product_id=product_id)
+        .first()
+    )
+
+    if not inventory:
+        raise HTTPException(status_code=404, detail="在庫情報が見つかりません")
+
+    if stock_data.current_stock < 0:
+        raise HTTPException(status_code=400, detail="在庫数は0以上である必要があります")
+
+    inventory.current_stock = stock_data.current_stock
+    db.commit()
+    db.refresh(inventory)
+
+    return {"status": "success", "message": "在庫数を更新しました"}
+
+
+@router.patch("/inventories/{store_id}/{product_id}/sale-status")
+def update_inventory_sale_status(
+    store_id: int,
+    product_id: int,
+    status_data: admin_schemas.InventoryUpdateSaleStatus,
+    db: Session = Depends(get_db),
+):
+    """販売状態を切り替え"""
+    inventory = (
+        db.query(models.StoreInventory)
+        .filter_by(store_id=store_id, product_id=product_id)
+        .first()
+    )
+
+    if not inventory:
+        raise HTTPException(status_code=404, detail="在庫情報が見つかりません")
+
+    inventory.is_on_sale = status_data.is_on_sale
+    db.commit()
+    db.refresh(inventory)
+
+    status_text = "販売中" if status_data.is_on_sale else "販売停止"
+    return {"status": "success", "message": f"販売状態を {status_text} に変更しました"}
