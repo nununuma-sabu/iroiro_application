@@ -1,250 +1,441 @@
-# 🍽️ 社食チケット管理システム
+# Food Ticket System (食券機システム)
 
-FastAPI と React を使った社食チケット管理システムです。
+飲食店向けのデジタル食券機シミュレーター。顧客向けの注文画面と、管理者向けの商品・在庫管理機能を備えたWebアプリケーションです。
 
 ## 📋 目次
-- [概要](#概要)
-- [主な機能](#主な機能)
+
+- [機能概要](#機能概要)
 - [技術スタック](#技術スタック)
-- [プロジェクト構成](#プロジェクト構成)
 - [セットアップ](#セットアップ)
 - [使い方](#使い方)
-- [API仕様](#api仕様)
+- [プロジェクト構成](#プロジェクト構成)
 - [開発履歴](#開発履歴)
+- [API仕様](#api仕様)
+- [データベース構成](#データベース構成)
+- [開発用コマンド](#開発用コマンド)
+- [トラブルシューティング](#トラブルシューティング)
 - [今後の開発予定](#今後の開発予定)
 
 ---
 
-## 概要
+## 🎯 機能概要
 
-社員食堂のチケット管理を効率化するWebアプリケーションです。従業員は好きなメニューを選んでチケットを購入し、食堂で使用できます。管理者は商品・店舗・カテゴリの管理、在庫管理が可能です。
-
----
-
-## 主な機能
-
-### ユーザー向け機能
-- 🏪 **店舗選択** - 複数の店舗から選択可能
-- 📂 **カテゴリフィルター** - 定食、丼物、麺類などでフィルタリング
-- 🛒 **商品選択** - 商品画像・名前・価格を表示
-- 🎟️ **チケット購入** - 選択した商品のチケットを発行
-- 📱 **QRコード表示** - チケットごとにQRコード生成・表示
-- ⏰ **現在時刻表示** - ヘッダーに現在時刻をリアルタイム表示
+### 顧客向け機能
+- ✅ **店舗ログイン** - 店舗IDとパスワードで認証
+- ✅ **顔認証シミュレーション** - 顧客属性（年齢層・性別）の自動検出
+- ✅ **手動属性入力** - 顔認証スキップ時の手動入力
+- ✅ **商品閲覧** - カテゴリ別の商品表示（動的カテゴリ対応）
+- ✅ **カート機能** - 商品の追加・削除・数量変更
+- ✅ **注文確定** - 在庫の自動減少、注文履歴の保存
+- ✅ **現在時刻表示** - 全ページに現在時刻をリアルタイム表示
 
 ### 管理者向け機能
-- ✅ **商品管理** - 商品の登録・編集・削除・画像アップロード
-- ✅ **店舗管理** - 店舗情報の登録・編集
-- ✅ **カテゴリ管理** - カテゴリの登録・編集
-- ✅ **在庫管理** - 在庫の一括管理・販売状態の切り替え
+- ✅ **カテゴリ管理** - カテゴリの追加・編集・削除（CRUD操作）
+- ✅ **商品管理** - 商品の追加・編集・削除（CRUD操作）
+- ✅ **画像アップロード** - 商品画像のアップロード機能
+- ✅ **カテゴリフィルター** - カテゴリ別の商品絞り込み
+- ✅ **初期在庫設定** - 商品登録時に在庫数も同時設定
+- 🚧 **在庫管理** - （未実装）在庫の一括管理・販売状態の切り替え
+- 🚧 **売上分析** - （未実装）売上グラフ・人気商品ランキング
 
 ---
 
-## 技術スタック
+## 🛠 技術スタック
 
 ### バックエンド
-- **FastAPI** - 高速なPython Webフレームワーク
+- **Python 3.10+**
+- **FastAPI** - 高速なWebフレームワーク
 - **SQLAlchemy** - ORM（Object-Relational Mapping）
-- **MySQL** - データベース
-- **Pydantic** - データバリデーション
+- **SQLite** - データベース
+- **Passlib** - パスワードハッシュ化
+- **python-multipart** - ファイルアップロード対応
 
 ### フロントエンド
-- **React** - UIライブラリ
-- **TypeScript** - 型安全なJavaScript
+- **React 18** + **TypeScript**
+- **Vite** - 高速ビルドツール
 - **React Router** - ルーティング
 - **Axios** - HTTP通信
-- **QRCode.react** - QRコード生成
-
-### その他
-- **Docker** - コンテナ化
-- **Docker Compose** - 複数コンテナの管理
+- **Tailwind CSS** - スタイリング
 
 ---
 
-## プロジェクト構成
+## 🚀 セットアップ
+
+### 必要な環境
+- Python 3.10以上
+- Node.js 18以上
+- npm または yarn
+
+### 1. リポジトリのクローン
+
+```bash
+git clone https://github.com/nununuma-sabu/iroiro_application.git
+cd iroiro_application/food_ticket
+```
+
+### 2. バックエンドのセットアップ
+
+```bash
+cd backend
+
+# 仮想環境の作成（推奨）
+python -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# 依存パッケージのインストール
+pip install -r requirements.txt
+
+# データベースの作成
+python -m scripts.create_db
+
+# 初期データの投入
+python -m scripts.seed
+
+# サーバー起動
+uvicorn app.main:app --reload
+```
+
+バックエンドは `http://127.0.0.1:8000` で起動します。
+
+### 3. フロントエンドのセットアップ
+
+```bash
+cd ../frontend
+
+# 依存パッケージのインストール
+npm install
+
+# 開発サーバー起動
+npm run dev
+```
+
+フロントエンドは `http://localhost:5173` で起動します。
+
+---
+
+## 📖 使い方
+
+### 顧客画面
+
+1. ブラウザで `http://localhost:5173` にアクセス
+2. ログイン画面で以下を入力：
+   - **店舗ID**: `1`
+   - **パスワード**: `password123`
+3. 顔認証画面でカメラを起動、または「手動で入力する」をクリック
+4. 商品を選択してカートに追加
+5. 「注文を確定する」ボタンで注文完了
+
+### 管理画面
+
+1. ブラウザで `http://localhost:5173/admin` にアクセス
+2. サイドバーから機能を選択：
+   - **カテゴリ管理** (`/admin/categories`) - カテゴリの追加・編集・削除
+   - **商品管理** (`/admin/products`) - 商品の追加・編集・削除、画像アップロード
+
+#### カテゴリ管理
+- 新しいカテゴリを追加
+- 既存カテゴリの名前を編集
+- カテゴリの削除（商品が紐付いていない場合のみ）
+
+#### 商品管理
+- 新規商品の追加（商品名、カテゴリ、価格、画像、初期在庫）
+- 商品情報の編集
+- 商品の削除
+- カテゴリでフィルタリング
+
+---
+
+## 📂 プロジェクト構成
 
 ```
 food_ticket/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                    # FastAPIアプリケーションのエントリーポイント
-│   │   ├── database.py                # データベース接続設定
-│   │   ├── models/
+│   │   ├── core/              # セキュリティ、設定
+│   │   │   └── security.py
+│   │   ├── db/                # データベース関連
+│   │   │   ├── models.py      # テーブル定義
+│   │   │   └── session.py     # DB接続
+│   │   ├── routers/           # APIルーター
 │   │   │   ├── __init__.py
-│   │   │   ├── store.py               # 店舗モデル
-│   │   │   ├── category.py            # カテゴリモデル
-│   │   │   ├── product.py             # 商品モデル
-│   │   │   ├── inventory.py           # 在庫モデル
-│   │   │   └── ticket.py              # チケットモデル
-│   │   ├── schemas/
-│   │   │   ├── __init__.py
-│   │   │   ├── store.py               # 店舗スキーマ
-│   │   │   ├── category.py            # カテゴリスキーマ
-│   │   │   ├── product.py             # 商品スキーマ
-│   │   │   ├── inventory.py           # 在庫スキーマ
-│   │   │   ├── ticket.py              # チケットスキーマ
-│   │   │   └── admin.py               # 管理者用スキーマ
-│   │   └── routers/
-│   │       ├── __init__.py
-│   │       ├── stores.py              # 店舗API
-│   │       ├── categories.py          # カテゴリAPI
-│   │       ├── products.py            # 商品API
-│   │       ├── inventories.py         # 在庫API
-│   │       ├── tickets.py             # チケットAPI
-│   │       └── admin.py               # 管理者API
-│   ├── uploads/                       # アップロード画像保存ディレクトリ
-│   ├── requirements.txt               # Python依存パッケージ
-│   └── Dockerfile
-├── frontend/
-│   ├── public/
-│   │   └── images/                    # 商品画像
-│   ├── src/
-│   │   ├── App.tsx                    # メインアプリケーション
-│   │   ├── App.css
-│   │   ├── index.tsx
-│   │   ├── index.css
-│   │   ├── components/
-│   │   │   ├── Header.tsx             # ヘッダーコンポーネント
-│   │   │   ├── Header.css
-│   │   │   ├── StoreSelector.tsx      # 店舗選択
-│   │   │   ├── StoreSelector.css
-│   │   │   ├── CategoryFilter.tsx     # カテゴリフィルター
-│   │   │   ├── CategoryFilter.css
-│   │   │   ├── ProductList.tsx        # 商品一覧
-│   │   │   ├── ProductList.css
-│   │   │   ├── TicketList.tsx         # チケット一覧
-│   │   │   ├── TicketList.css
-│   │   │   └── admin/
-│   │   │       ├── StoreManager.tsx
-│   │   │       ├── StoreManager.css
-│   │   │       ├── CategoryManager.tsx
-│   │   │       ├── CategoryManager.css
-│   │   │       ├── ProductManager.tsx
-│   │   │       ├── ProductManager.css
-│   │   │       ├── InventoryManager.tsx
-│   │   │       └── InventoryManager.css
-│   │   ├── pages/
-│   │   │   ├── UserPage.tsx           # ユーザー画面
-│   │   │   ├── UserPage.css
-│   │   │   ├── AdminPage.tsx          # 管理者画面
-│   │   │   └── AdminPage.css
-│   │   └── api/
-│   │       └── client.ts              # API通信クライアント
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── Dockerfile
-├── docker-compose.yml
-└── README.md
+│   │   │   └── admin.py       # 管理画面API
+│   │   ├── schemas/           # Pydanticスキーマ
+│   │   │   └── admin.py       # 管理画面スキーマ
+│   │   └── main.py            # FastAPIアプリ本体
+│   ├── scripts/
+│   │   ├── create_db.py       # DB作成スクリプト
+│   │   └── seed.py            # 初期データ投入
+│   ├── requirements.txt       # Python依存パッケージ
+│   └── vending_machine.db     # SQLiteデータベース（自動生成）
+│
+└── frontend/
+    ├── src/
+    │   ├── api/               # API通信
+    │   │   ├── client.ts      # 共通axiosクライアント
+    │   │   ├── admin.ts       # 管理画面API関数
+    │   │   ├── store.ts       # 店舗API関数
+    │   │   └── order.ts       # 注文API関数
+    │   ├── components/        # Reactコンポーネント
+    │   │   ├── admin/
+    │   │   │   ├── CategoryManager.tsx
+    │   │   │   ├── CategoryManager.css
+    │   │   │   ├── ProductManager.tsx
+    │   │   │   └── ProductManager.css
+    │   │   ├── CurrentTime.tsx      # 現在時刻表示コンポーネント
+    │   │   ├── CurrentTime.css
+    │   │   ├── Header.tsx           # 共通ヘッダー
+    │   │   ├── LoginScreen.tsx
+    │   │   ├── FaceRecognitionScreen.tsx
+    │   │   ├── CustomerAttributeScreen.tsx
+    │   │   └── MenuScreen.tsx
+    │   ├── pages/             # ページコンポーネント
+    │   │   ├── StorePage.tsx  # 顧客画面
+    │   │   └── AdminPage.tsx  # 管理画面
+    │   ├── types/             # TypeScript型定義
+    │   │   ├── auth.ts
+    │   │   ├── store.ts
+    │   │   └── order.ts
+    │   └── App.tsx            # ルートコンポーネント
+    ├── public/
+    │   └── images/            # アップロード画像保存先
+    ├── package.json
+    └── vite.config.ts
 ```
 
 ---
 
-## セットアップ
+## 🔄 開発履歴
 
-### 前提条件
-- Docker Desktop がインストールされていること
-- Git がインストールされていること
+### 2025-12-29:  現在時刻表示機能の実装
 
-### 起動手順
+#### 実装内容
+- **全ページ共通ヘッダーに現在時刻を表示**
+  - `frontend/src/components/CurrentTime.tsx` を作成
+  - `frontend/src/components/CurrentTime.css` を作成
+  - `frontend/src/components/Header.tsx` を作成
+  - `frontend/src/App.tsx` を更新してHeaderを全ページに適用
 
-1. **リポジトリのクローン**
-```bash
-git clone <repository-url>
-cd food_ticket
+#### 機能詳細
+- **リアルタイム更新**:  1秒ごとに自動的に時刻を更新
+- **日本語フォーマット**: `YYYY年MM月DD日(曜日) HH:MI: SS` 形式で表示
+- **スティッキーヘッダー**: スクロールしても画面上部に固定表示
+- **レスポンシブデザイン**: グラデーション背景とシャドウ効果
+
+```typescript
+// CurrentTime.tsx の実装例
+const formatTime = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  
+  const weekdays = ['日', '月', '火', '水', '木', '金', '土'];
+  const weekday = weekdays[date.getDay()];
+
+  return `${year}年${month}月${day}日(${weekday}) ${hours}:${minutes}: ${seconds}`;
+};
 ```
 
-2. **Docker Composeで起動**
-```bash
-docker-compose up --build
+### 2025-12-28: 管理画面の実装
+
+#### Step 1: API基盤の共通化
+- **実装内容**
+  - `frontend/src/api/client.ts` を作成し、axios共通インスタンスを実装
+  - `frontend/src/api/store.ts` を更新し、共通クライアントを使用
+  - エラーハンドリングのインターセプターを追加
+
+```typescript
+// frontend/src/api/client.ts
+import axios from 'axios';
+
+export const apiClient = axios.create({
+  baseURL: 'http://127.0.0.1:8000',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
 ```
 
-3. **アクセス**
-- フロントエンド: http://localhost:3000
-- バックエンドAPI: http://localhost:8000
-- API仕様書（Swagger UI）: http://localhost:8000/docs
+#### Step 2: バックエンドの管理画面API
+- **実装内容**
+  - `backend/app/schemas/admin.py` を作成（カテゴリ・商品のスキーマ定義）
+  - `backend/app/routers/admin.py` を作成（管理画面API実装）
+  - `backend/app/main.py` に管理画面ルーターを登録
 
-### 初期データの投入
+- **API一覧**
+  - カテゴリCRUD:  GET/POST/PUT/DELETE `/admin/categories`
+  - 商品CRUD: GET/POST/PUT/DELETE `/admin/products`
+  - 画像アップロード: POST `/admin/upload-image`
 
-初回起動時、以下の初期データが自動的に作成されます：
+#### Step 3: フロントエンドのルーティング変更
+- **実装内容**
+  - `frontend/src/App.tsx` をReact Routerで更新
+  - `frontend/src/pages/StorePage.tsx` を作成（顧客向けページ）
+  - `frontend/src/pages/AdminPage. tsx` を作成（管理画面レイアウト）
 
-- **店舗**: A食堂、B食堂
-- **カテゴリ**: 定食、丼物、麺類、カレー、サイドメニュー
-- **商品**: 各店舗に複数の商品（画像付き）
-- **在庫**: 各商品の初期在庫
+```typescript
+// App.tsx
+<Router>
+  <Routes>
+    <Route path="/" element={<StorePage />} />
+    <Route path="/admin/*" element={<AdminPage />} />
+  </Routes>
+</Router>
+```
+
+#### Step 4: 管理画面API関数
+- **実装内容**
+  - `frontend/src/api/admin.ts` を作成
+  - カテゴリ・商品のCRUD関数を実装
+  - 画像アップロード関数を実装
+
+#### Step 5: カテゴリ管理画面
+- **実装内容**
+  - `frontend/src/components/admin/CategoryManager.tsx` を作成
+  - カテゴリ一覧表示、追加、編集、削除機能を実装
+  - インライン編集可能なUI
+
+#### Step 6: 商品管理画面
+- **実装内容**
+  - `frontend/src/components/admin/ProductManager.tsx` を作成
+  - 商品一覧表示（グリッドレイアウト）
+  - 商品追加・編集・削除機能
+  - カテゴリフィルター機能
+  - 画像アップロード対応
+  - 初期在庫設定
+
+#### Step 7: 注文画面の改善
+- **実装内容**
+  - `frontend/src/components/MenuScreen.tsx` を更新
+  - APIから全カテゴリを動的に取得
+  - 商品がないカテゴリも表示
+  - 管理画面で追加したカテゴリが即反映されるように改善
+
+```typescript
+// MenuScreen.tsx
+const [categories, setCategories] = useState<Category[]>([]);
+
+useEffect(() => {
+  const fetchData = async () => {
+    const [productsData, categoriesData] = await Promise.all([
+      getStoreProducts(storeId),
+      getAllCategories(),
+    ]);
+    setProducts(productsData || []);
+    setCategories(categoriesData || []);
+  };
+  fetchData();
+}, [storeId]);
+```
 
 ---
 
-## 使い方
+## 🔌 API仕様
 
-### ユーザー画面
+### 顧客向けAPI
 
-1. **店舗選択** (`/`)
-   - トップページで利用する店舗を選択
-   - A食堂またはB食堂から選択可能
+#### `POST /login/store`
+店舗ログイン
 
-2. **商品選択**
-   - カテゴリでフィルタリング
-   - 商品カードをクリックしてチケット購入
+**リクエスト:**
+```json
+{
+  "store_id": 1,
+  "password": "password123"
+}
+```
 
-3. **チケット管理**
-   - 購入したチケットの一覧表示
-   - 各チケットのQRコード表示
-   - 使用済みチケットは自動的に非表示
+**レスポンス:**
+```json
+{
+  "status": "success",
+  "store_info": {
+    "id": 1,
+    "name": "新宿本店",
+    "prefecture": "東京都",
+    "municipality": "新宿区"
+  }
+}
+```
 
-### 管理画面
+#### `POST /customer-attributes`
+顧客属性登録
 
-管理画面 (`/admin`) では以下の機能が利用できます：
+**リクエスト:**
+```json
+{
+  "store_id": 1,
+  "age_group": "20代",
+  "gender": "男性"
+}
+```
 
-- **店舗管理** (`/admin/stores`) - 店舗の追加・編集
-- **カテゴリ管理** (`/admin/categories`) - カテゴリの追加・編集
-- **商品管理** (`/admin/products`) - 商品の追加・編集・画像アップロード
-- **在庫管理** (`/admin/inventory`) - 在庫の確認・更新、販売状態の切り替え
+**レスポンス:**
+```json
+{
+  "attribute_id": 1,
+  "store_id": 1,
+  "age_group": "20代",
+  "gender": "男性",
+  "scanned_at": "2025-12-28T12:34:56"
+}
+```
 
-#### 店舗管理
-- 新しい店舗の追加
-- 既存店舗の編集
+#### `GET /stores/{store_id}/products`
+販売中の商品一覧を取得
 
-#### カテゴリ管理
-- 新しいカテゴリの追加
-- 既存カテゴリの編集
-
-#### 商品管理
-- 新しい商品の追加（基本情報 + 各店舗の在庫設定）
-- 既存商品の編集
-- 商品画像のアップロード
-
-#### 在庫管理
-- 店舗の全商品の在庫を一覧表示
-- 在庫数の編集（インライン編集または+10/-10のクイック調整）
-- 販売中/販売停止の切り替え
-- カテゴリ別のフィルタリング
-- 在庫アラート表示（10以下で警告、0で危険）
-
----
-
-## API仕様
-
-### ユーザー向けAPI
-
-#### 店舗
-
-**`GET /stores`** - 店舗一覧取得
-
-レスポンス例:
+**レスポンス:**
 ```json
 [
   {
-    "store_id": 1,
-    "store_name": "A食堂",
-    "location": "本社1F"
+    "product_id": 1,
+    "product_name": "ハンバーグ定食",
+    "category_name": "定食",
+    "price": 850,
+    "stock": 50,
+    "image_url":  "/images/hamburg.jpg"
   }
 ]
 ```
 
-#### カテゴリ
+#### `POST /orders`
+注文を確定
 
-**`GET /categories`** - カテゴリ一覧取得
+**リクエスト:**
+```json
+{
+  "store_id": 1,
+  "attribute_id": 1,
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 2,
+      "unit_price": 850
+    }
+  ],
+  "total_amount": 1700,
+  "payment_method": "現金",
+  "take_out_type": "店内"
+}
+```
 
-レスポンス例:
+**レスポンス:**
+```json
+{
+  "status": "success",
+  "order_id":  1
+}
+```
+
+### 管理画面API
+
+#### カテゴリ管理
+
+**`GET /admin/categories`** - カテゴリ一覧取得
+
+レスポンス:
 ```json
 [
   {
@@ -254,331 +445,371 @@ docker-compose up --build
 ]
 ```
 
-#### 商品
-
-**`GET /products?store_id={store_id}&category_id={category_id}`** - 商品一覧取得
-
-レスポンス例:
-```json
-[
-  {
-    "product_id": 1,
-    "product_name": "ハンバーグ定食",
-    "category_name": "定食",
-    "standard_price": 850,
-    "image_url": "/images/hamburg.jpg",
-    "inventory_id": 10001,
-    "current_stock": 50,
-    "is_on_sale": true
-  }
-]
-```
-
-#### チケット
-
-**`POST /tickets`** - チケット発行
-
-リクエスト例:
-```json
-{
-  "user_id": 1,
-  "inventory_id": 10001
-}
-```
-
-レスポンス例:
-```json
-{
-  "ticket_id": 100,
-  "user_id": 1,
-  "inventory_id": 10001,
-  "product_name": "ハンバーグ定食",
-  "store_name": "A食堂",
-  "price": 850,
-  "qr_code": "TICKET-100-USER-1",
-  "issued_at": "2025-12-29T10:30:00",
-  "is_used": false
-}
-```
-
-**`GET /tickets?user_id={user_id}`** - チケット一覧取得
-
-**`PUT /tickets/{ticket_id}/use`** - チケット使用
-
----
-
-### 管理画面API
-
-#### 店舗管理
-
-**`POST /admin/stores`** - 店舗作成
+**`POST /admin/categories`** - カテゴリ追加
 
 リクエスト:
 ```json
 {
-  "store_name": "C食堂",
-  "location": "本社2F"
-}
-```
-
-**`PUT /admin/stores/{store_id}`** - 店舗更新
-
-#### カテゴリ管理
-
-**`POST /admin/categories`** - カテゴリ作成
-
-リクエスト:
-```json
-{
-  "category_name": "デザート"
+  "category_name": "ドリンク"
 }
 ```
 
 **`PUT /admin/categories/{category_id}`** - カテゴリ更新
 
-#### 商品管理
-
-**`POST /admin/products`** - 商品作成（在庫も同時作成）
-
 リクエスト:
 ```json
 {
-  "product_name": "親子丼",
-  "category_id": 2,
-  "standard_price": 750,
-  "image_url": "/images/oyakodon.jpg",
-  "inventories": [
-    {
-      "store_id": 1,
-      "current_stock": 30,
-      "is_on_sale": true
-    },
-    {
-      "store_id": 2,
-      "current_stock": 25,
-      "is_on_sale": true
-    }
-  ]
+  "category_name": "ソフトドリンク"
 }
 ```
 
-**`PUT /admin/products/{product_id}`** - 商品更新
-
-**`DELETE /admin/products/{product_id}`** - 商品削除
-
-#### 画像アップロード
-
-**`POST /admin/upload-image`** - 画像アップロード
-
-リクエスト: `multipart/form-data`
-- `file`: 画像ファイル（JPEG, PNG）
+**`DELETE /admin/categories/{category_id}`** - カテゴリ削除
 
 レスポンス:
 ```json
 {
-  "image_url": "/images/uploaded_image.jpg"
+  "status": "success",
+  "message": "カテゴリを削除しました"
 }
 ```
 
-#### 在庫管理
+#### 商品管理
 
-**`GET /admin/inventories`** - 在庫一覧取得
+**`GET /admin/products`** - 商品一覧取得
 
-クエリパラメータ:
-- `store_id` (required): 店舗ID
+クエリパラメータ: 
 - `category_id` (optional): カテゴリIDでフィルター
 
 レスポンス:
 ```json
 [
   {
-    "inventory_id": 10001,
-    "store_id": 1,
     "product_id": 1,
     "product_name": "ハンバーグ定食",
+    "category_id": 1,
     "category_name": "定食",
     "standard_price": 850,
-    "image_url": "/images/hamburg.jpg",
-    "current_stock": 45,
+    "image_url": "/images/hamburg. jpg",
+    "stock": 50,
     "is_on_sale": true
   }
 ]
 ```
 
-**`PUT /admin/inventories/{store_id}/{product_id}/stock`** - 在庫数更新
+**`POST /admin/products`** - 商品追加
 
 リクエスト:
 ```json
 {
-  "current_stock": 50
+  "product_name": "コーラ",
+  "category_id": 2,
+  "standard_price": 350,
+  "image_url": "/images/cola.jpg",
+  "initial_stock": 99
 }
 ```
+
+**`PUT /admin/products/{product_id}`** - 商品更新
+
+リクエスト: 
+```json
+{
+  "product_name": "コカコーラ",
+  "standard_price": 300
+}
+```
+
+**`DELETE /admin/products/{product_id}`** - 商品削除
+
+レスポンス:
+```json
+{
+  "status":  "success",
+  "message":  "商品を削除しました"
+}
+```
+
+#### 画像アップロード
+
+**`POST /admin/upload-image`** - 商品画像をアップロード
+
+リクエスト:
+- Content-Type: `multipart/form-data`
+- フィールド: `file` (画像ファイル)
 
 レスポンス:
 ```json
 {
   "status": "success",
-  "message": "在庫数を更新しました"
+  "image_url": "/images/1735380123_product.jpg"
 }
 ```
 
-**`PATCH /admin/inventories/{store_id}/{product_id}/sale-status`** - 販売状態切り替え
+詳細は `http://127.0.0.1:8000/docs` のSwagger UIを参照してください。
 
-リクエスト:
-```json
-{
-  "is_on_sale": false
-}
+---
+
+## 🗄 データベース構成
+
+### 主要テーブル
+
+#### prefectures（都道府県）
+```sql
+CREATE TABLE prefectures (
+    prefecture_id INTEGER PRIMARY KEY,
+    prefecture_name VARCHAR(10) NOT NULL
+);
 ```
 
-レスポンス:
-```json
-{
-  "status": "success",
-  "message": "販売状態を 販売停止 に変更しました"
-}
+#### municipalities（市町村）
+```sql
+CREATE TABLE municipalities (
+    municipality_id INTEGER PRIMARY KEY,
+    prefecture_id INTEGER NOT NULL,
+    municipality_name VARCHAR(50) NOT NULL,
+    FOREIGN KEY (prefecture_id) REFERENCES prefectures(prefecture_id)
+);
+```
+
+#### stores（店舗）
+```sql
+CREATE TABLE stores (
+    store_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    municipality_id INTEGER NOT NULL,
+    store_name VARCHAR(100) NOT NULL,
+    address_detail VARCHAR(200),
+    password_hash VARCHAR(255) NOT NULL,
+    FOREIGN KEY (municipality_id) REFERENCES municipalities(municipality_id)
+);
+```
+
+#### categories（カテゴリ）
+```sql
+CREATE TABLE categories (
+    category_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_name VARCHAR(50) NOT NULL UNIQUE
+);
+```
+
+#### products（商品）
+```sql
+CREATE TABLE products (
+    product_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
+    product_name VARCHAR(100) NOT NULL,
+    standard_price INTEGER NOT NULL,
+    image_url VARCHAR(255),
+    FOREIGN KEY (category_id) REFERENCES categories(category_id)
+);
+```
+
+#### store_inventories（店舗在庫）
+```sql
+CREATE TABLE store_inventories (
+    inventory_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    current_stock INTEGER NOT NULL DEFAULT 0,
+    is_on_sale BOOLEAN NOT NULL DEFAULT TRUE,
+    FOREIGN KEY (store_id) REFERENCES stores(store_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+```
+
+#### customer_attributes（顧客属性）
+```sql
+CREATE TABLE customer_attributes (
+    attribute_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id INTEGER NOT NULL,
+    age_group VARCHAR(20),
+    gender VARCHAR(10),
+    scanned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (store_id) REFERENCES stores(store_id)
+);
+```
+
+#### orders（注文）
+```sql
+CREATE TABLE orders (
+    order_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    store_id INTEGER NOT NULL,
+    attribute_id INTEGER,
+    total_amount INTEGER NOT NULL,
+    payment_method VARCHAR(20),
+    take_out_type VARCHAR(20),
+    ordered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (store_id) REFERENCES stores(store_id),
+    FOREIGN KEY (attribute_id) REFERENCES customer_attributes(attribute_id)
+);
+```
+
+#### order_details（注文明細）
+```sql
+CREATE TABLE order_details (
+    detail_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    order_id INTEGER NOT NULL,
+    product_id INTEGER NOT NULL,
+    quantity INTEGER NOT NULL,
+    unit_price INTEGER NOT NULL,
+    FOREIGN KEY (order_id) REFERENCES orders(order_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+```
+
+ER図については `/backend/ER図.md` を参照してください。
+
+---
+
+## 🔧 開発用コマンド
+
+### バックエンド起動
+```bash
+cd ~/iroiro_application/food_ticket/backend/
+uvicorn app.main:app --reload
+```
+
+### フロントエンド起動
+```bash
+cd ~/iroiro_application/food_ticket/frontend/
+npm run dev
+```
+
+### データベースリセット
+```bash
+cd ~/iroiro_application/food_ticket/backend/
+rm vending_machine.db
+python -m scripts.create_db
+python -m scripts.seed
+```
+
+### テストデータ
+
+初期データ（`scripts/seed.py`）には以下が含まれます：
+
+**店舗:**
+- ID: 1
+- 名前: 新宿本店
+- パスワード: `password123`
+
+**カテゴリ:**
+- 定食（ID: 1）
+- サイドメニュー（ID: 2）
+- 単品（ID: 3）
+
+**商品:**
+1. ハンバーグ定食（定食、¥850、在庫50）
+2. からあげ定食（定食、¥750、在庫30）
+3. フライドポテト（サイドメニュー、¥300、在庫100）
+4. とんかつ定食（定食、¥900、在庫40）
+
+---
+
+## 🐛 トラブルシューティング
+
+### エラー:  `Form data requires "python-multipart" to be installed`
+
+**原因:** 画像アップロード機能に必要なパッケージが不足
+
+**解決方法:**
+```bash
+cd ~/iroiro_application/food_ticket/backend/
+pip install python-multipart
+uvicorn app.main:app --reload
+```
+
+### エラー: 画像アップロード時に `FileNotFoundError`
+
+**原因:** 画像保存ディレクトリが存在しない
+
+**解決方法:**
+```bash
+cd ~/iroiro_application/food_ticket/frontend/public
+mkdir -p images
+```
+
+### カテゴリを追加しても注文画面に表示されない
+
+**原因:** 以前の実装では、商品が存在するカテゴリのみ表示していた
+
+**解決済み:** MenuScreen.tsxを更新し、APIから全カテゴリを取得するように変更済み
+
+### CORS エラーが発生する
+
+**原因:** バックエンドのCORS設定
+
+**解決方法:** `backend/app/main.py` のCORS設定を確認
+```python
+origins = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 ```
 
 ---
 
-## 開発履歴
+## 📝 今後の開発予定
 
-### 2025-12-28: プロジェクト開始
-
-#### 実装内容
-- **プロジェクトの初期化**
-  - Docker環境構築（backend, frontend, MySQL）
-  - FastAPIプロジェクト作成
-  - React + TypeScriptプロジェクト作成
-
-- **データベース設計**
-  - テーブル定義: stores, categories, products, inventories, tickets
-  - SQLAlchemyモデル作成
-  - 初期データ投入機能
-
-- **バックエンドAPI実装**
-  - 店舗API (`/stores`)
-  - カテゴリAPI (`/categories`)
-  - 商品API (`/products`)
-  - チケットAPI (`/tickets`)
-  - 在庫管理ロジック
-
-- **フロントエンド実装**
-  - ユーザー画面
-    - 店舗選択
-    - カテゴリフィルター
-    - 商品一覧表示
-    - チケット購入機能
-    - チケット一覧・QRコード表示
-
-#### 技術的な特徴
-- FastAPI + SQLAlchemy でRESTful API構築
-- React Hooksを活用したステート管理
-- TypeScriptによる型安全な開発
-- Docker Composeによるコンテナ統合管理
-
----
-
-### 2025-12-29: 管理画面の実装
-
-#### 実装内容
-- **バックエンド管理者API**
-  - `backend/app/schemas/admin.py` に管理者用スキーマを追加
-  - `backend/app/routers/admin.py` に管理者用APIエンドポイントを追加
+### 優先度:  高
+- [ ] **在庫管理画面** - リアルタイム在庫確認、販売中/停止の切り替え
+  - 店舗別の在庫一覧表示
+  - 在庫の増減機能
+  - 販売状態の一括切り替え
   
-- **フロントエンド管理画面**
-  - `frontend/src/pages/AdminPage.tsx` を作成
-  - `frontend/src/components/admin/StoreManager.tsx` を作成
-  - `frontend/src/components/admin/CategoryManager.tsx` を作成
-  - `frontend/src/components/admin/ProductManager.tsx` を作成
-
-#### 機能詳細
-- **店舗管理**: 店舗の作成・編集（店舗名、所在地）
-- **カテゴリ管理**: カテゴリの作成・編集（カテゴリ名）
-- **商品管理**:
-  - 商品の作成・編集・削除
-  - 商品画像のアップロード機能
-  - 各店舗の在庫情報を一括設定
-  - 販売状態（販売中/販売停止）の切り替え
-
-#### 技術的な特徴
-- 画像アップロードは `multipart/form-data` を使用
-- 商品作成時に複数店舗の在庫を同時に設定可能
-- レスポンシブデザイン対応
-
----
-
-### 2025-12-29:  現在時刻表示機能の実装
-
-#### 実装内容
-- **Headerコンポーネントの拡張**
-  - `frontend/src/components/Header.tsx` に現在時刻表示機能を追加
-  - 1秒ごとに時刻を更新する `setInterval` を実装
-
-#### 機能詳細
-- ヘッダー右側に現在時刻をリアルタイム表示
-- フォーマット: `YYYY年MM月DD日 HH:MM:SS`
-- 日本語表記で見やすく表示
-
-#### 技術的な特徴
-- React Hooks (`useState`, `useEffect`) を活用
-- コンポーネントのアンマウント時に `clearInterval` でクリーンアップ
-
----
-
-### 2026-01-02: 在庫管理画面の実装
-
-#### 実装内容
-- **バックエンドの在庫管理API**
-  - `backend/app/schemas/admin.py` に在庫管理用スキーマを追加
-  - `backend/app/routers/admin.py` に在庫管理APIエンドポイントを追加
-- **フロントエンドの在庫管理画面**
-  - `frontend/src/components/admin/InventoryManager.tsx` を作成
-  - `frontend/src/components/admin/InventoryManager.css` を作成
-  - `frontend/src/pages/AdminPage.tsx` に在庫管理へのルーティングを追加
-
-#### 機能詳細
-- **在庫一覧表示** - 店舗別・カテゴリ別に在庫を表示
-- **在庫数の編集** - リアルタイムで在庫数を更新
-- **クイック調整** - +10/-10ボタンで素早く在庫を増減
-- **販売状態の切り替え** - 販売中/販売停止をワンクリックで切り替え
-- **カテゴリフィルター** - カテゴリごとに在庫を絞り込み表示
-- **在庫アラート** - 在庫が10以下の商品を黄色、0の商品を赤色で警告表示
-
----
-
-## 今後の開発予定
-
-### 優先度: 高
-- **チケット使用画面** - QRコードスキャン機能（カメラ使用）
-- **売上レポート** - 日次・月次の売上集計と可視化
+- [ ] **売上分析ダッシュボード** - 日別/月別売上グラフ、人気商品ランキング
+  - Chart.jsやRechartsを使った売上グラフ
+  - 時間帯別の売上分析
+  - 顧客属性別の購入傾向
 
 ### 優先度: 中
-- **ユーザー認証** - ログイン機能・権限管理
-- **通知機能** - チケット発行通知・在庫アラート
-- **検索機能** - 商品名での検索
+- [ ] **注文履歴画面** - 過去の注文一覧・詳細表示
+  - 日付範囲での絞り込み
+  - 注文詳細の表示
+  - 注文のキャンセル機能
+  
+- [ ] **店舗管理** - 複数店舗の管理、店舗情報編集
+  - 店舗一覧表示
+  - 店舗情報の編集
+  - 店舗ごとの設定
+  
+- [ ] **管理画面認証** - ログイン必須化、ユーザー権限管理
+  - 管理者ログイン機能
+  - ロールベースのアクセス制御
+  - セッション管理
 
 ### 優先度: 低
-- **多言語対応** - 英語・中国語などの対応
-- **テーマ切り替え** - ダークモード対応
-- **モバイルアプリ化** - React Nativeでのネイティブアプリ化
+- [ ] **通知機能** - 在庫アラート、注文完了通知
+  - Webプッシュ通知
+  - メール通知
+  - Slack連携
+  
+- [ ] **レポート出力** - 売上レポートのPDF/CSV出力
+  - 日次/月次レポート
+  - CSV/Excel出力
+  - PDF帳票出力
+  
+- [ ] **モバイル最適化** - レスポンシブデザインの改善
+  - スマートフォン向けUI
+  - タブレット対応
+  - PWA化
 
 ---
 
-## ライセンス
+## 📄 ライセンス
 
-MIT License
-
----
-
-## 作成者
-
-nununuma-sabu
+このプロジェクトはMITライセンスの下で公開されています。
 
 ---
 
-## 備考
+## 👤 作成者
 
-- 本プロジェクトは学習・デモ目的で作成されています
-- 本番環境での使用には、セキュリティ強化（認証・認可）が必要です
-- 画像ファイルは `frontend/public/images/` に配置してください
+[@nununuma-sabu](https://github.com/nununuma-sabu)
+
+---
+
+## 📚 参考資料
+
+- [FastAPI Documentation](https://fastapi.tiangolo.com/)
+- [React Documentation](https://react.dev/)
+- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/)
+- [Vite Documentation](https://vitejs.dev/)
