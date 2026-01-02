@@ -78,3 +78,35 @@ class ProductDetailResponse(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ==================== 在庫管理 ====================
+
+
+class InventoryResponse(BaseModel):
+    """在庫レスポンススキーマ"""
+
+    inventory_id: int  # store_id と product_id の組み合わせで一意
+    store_id: int
+    product_id: int
+    product_name: str
+    category_name: str
+    standard_price: int
+    image_url: Optional[str] = None
+    current_stock: int
+    is_on_sale: bool
+
+    class Config:
+        from_attributes = True
+
+
+class InventoryUpdateStock(BaseModel):
+    """在庫数更新用スキーマ"""
+
+    current_stock: int
+
+
+class InventoryUpdateSaleStatus(BaseModel):
+    """販売状態更新用スキーマ"""
+
+    is_on_sale: bool
