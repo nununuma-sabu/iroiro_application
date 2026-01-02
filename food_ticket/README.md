@@ -35,7 +35,7 @@
 - ✅ **画像アップロード** - 商品画像のアップロード機能
 - ✅ **カテゴリフィルター** - カテゴリ別の商品絞り込み
 - ✅ **初期在庫設定** - 商品登録時に在庫数も同時設定
-- 🚧 **在庫管理** - （未実装）在庫の一括管理・販売状態の切り替え
+- ✅ **在庫管理** - リアルタイム在庫確認、在庫数編集、販売状態の切り替え
 - 🚧 **売上分析** - （未実装）売上グラフ・人気商品ランキング
 
 ---
@@ -69,7 +69,7 @@
 ### 1. リポジトリのクローン
 
 ```bash
-git clone https://github.com/nununuma-sabu/iroiro_application.git
+git clone https://github.com/nununuma-sabu/iroiro_application. git
 cd iroiro_application/food_ticket
 ```
 
@@ -92,7 +92,7 @@ python -m scripts.create_db
 python -m scripts.seed
 
 # サーバー起動
-uvicorn app.main:app --reload
+uvicorn app. main:app --reload
 ```
 
 バックエンドは `http://127.0.0.1:8000` で起動します。
@@ -131,6 +131,7 @@ npm run dev
 2. サイドバーから機能を選択：
    - **カテゴリ管理** (`/admin/categories`) - カテゴリの追加・編集・削除
    - **商品管理** (`/admin/products`) - 商品の追加・編集・削除、画像アップロード
+   - **在庫管理** (`/admin/inventory`) - リアルタイム在庫確認、在庫数編集、販売状態の切り替え
 
 #### カテゴリ管理
 - 新しいカテゴリを追加
@@ -142,6 +143,13 @@ npm run dev
 - 商品情報の編集
 - 商品の削除
 - カテゴリでフィルタリング
+
+#### 在庫管理
+- 全商品の在庫一覧表示
+- カテゴリ別のフィルタリング
+- 在庫数の編集（ダイレクト編集 or クイック増減ボタン）
+- 販売中/販売停止の切り替え
+- 在庫アラート表示（在庫10以下で警告色表示）
 
 ---
 
@@ -166,7 +174,7 @@ food_ticket/
 │   │   ├── create_db.py       # DB作成スクリプト
 │   │   └── seed.py            # 初期データ投入
 │   ├── requirements.txt       # Python依存パッケージ
-│   └── vending_machine.db     # SQLiteデータベース（自動生成）
+│   └── vending_machine. db     # SQLiteデータベース（自動生成）
 │
 └── frontend/
     ├── src/
@@ -180,7 +188,9 @@ food_ticket/
     │   │   │   ├── CategoryManager.tsx
     │   │   │   ├── CategoryManager.css
     │   │   │   ├── ProductManager.tsx
-    │   │   │   └── ProductManager.css
+    │   │   │   ├── ProductManager.css
+    │   │   │   ├── InventoryManager.tsx
+    │   │   │   └── InventoryManager.css
     │   │   ├── CurrentTime.tsx      # 現在時刻表示コンポーネント
     │   │   ├── CurrentTime.css
     │   │   ├── Header.tsx           # 共通ヘッダー
@@ -206,18 +216,79 @@ food_ticket/
 
 ## 🔄 開発履歴
 
-### 2025-12-29:  現在時刻表示機能の実装
+### 2026-01-02:  在庫管理画面の実装
+
+#### 実装内容
+- **在庫管理API（バックエンド）の実装**
+  - `backend/app/routers/admin.py` に在庫管理エンドポイントを追加
+    - `GET /admin/inventories` - 在庫一覧取得（店舗ID・カテゴリIDでフィルター可能）
+    - `PUT /admin/inventories/{store_id}/{product_id}/stock` - 在庫数更新
+    - `PATCH /admin/inventories/{store_id}/{product_id}/sale-status` - 販売状態切り替え
+  - `backend/app/schemas/admin.py` に在庫関連のスキーマを追加
+    - `InventoryUpdateStock` - 在庫数更新用スキーマ
+    - `InventoryUpdateSaleStatus` - 販売状態更新用スキーマ
+
+- **フロントエンドAPI関数の追加**
+  - `frontend/src/api/admin.ts` に在庫管理API関数を実装
+    - `getInventories()` - 在庫一覧取得
+    - `updateInventoryStock()` - 在庫数更新
+    - `updateInventorySaleStatus()` - 販売状態切り替え
+  - TypeScript型定義 `Inventory` を追加
+
+- **在庫管理画面（InventoryManager）の実装**
+  - `frontend/src/components/admin/InventoryManager.tsx` を作成
+  - `frontend/src/components/admin/InventoryManager.css` を作成
+  - `frontend/src/pages/AdminPage.tsx` にルートを追加
+
+#### 機能詳細
+
+##### 在庫一覧表示
+- テーブル形式で商品情報を表示（画像、商品名、カテゴリ、価格、在庫数、販売状態）
+- カテゴリ別フィルタリング機能
+- 在庫数10以下の商品は警告色（オレンジ背景）で表示
+- 在庫0の商品は危険色（赤背景）で表示
+
+##### 在庫数編集
+- **ダイレクト編集**: 在庫数欄をクリックして直接数値入力
+- **クイック調整ボタン**: +10 / +5 / -5 / -10 のボタンで素早く在庫増減
+- バリデーション:  在庫数が0未満にならないようチェック
+
+##### 販売状態管理
+- 「販売中」/「販売停止」のトグルボタン
+- 販売中:  緑色表示、販売停止: グレー表示
+- 確認ダイアログで誤操作を防止
+
+```typescript
+// 在庫管理APIの使用例
+import * as adminApi from '../../api/admin';
+
+// 在庫一覧を取得（店舗ID=1、カテゴリでフィルター）
+const inventories = await adminApi.getInventories(1, categoryId);
+
+// 在庫数を更新
+await adminApi.updateInventoryStock(storeId, productId, 50);
+
+// 販売状態を切り替え
+await adminApi. updateInventorySaleStatus(storeId, productId, false);
+```
+
+#### データベース連携
+- `store_inventories` テーブルと連携
+- 注文時に在庫が自動減少する既存機能との統合
+- JOIN句で商品名・カテゴリ名も同時取得
+
+### 2025-12-29:   現在時刻表示機能の実装
 
 #### 実装内容
 - **全ページ共通ヘッダーに現在時刻を表示**
-  - `frontend/src/components/CurrentTime.tsx` を作成
+  - `frontend/src/components/CurrentTime. tsx` を作成
   - `frontend/src/components/CurrentTime.css` を作成
   - `frontend/src/components/Header.tsx` を作成
   - `frontend/src/App.tsx` を更新してHeaderを全ページに適用
 
 #### 機能詳細
-- **リアルタイム更新**:  1秒ごとに自動的に時刻を更新
-- **日本語フォーマット**: `YYYY年MM月DD日(曜日) HH:MI: SS` 形式で表示
+- **リアルタイム更新**:   1秒ごとに自動的に時刻を更新
+- **日本語フォーマット**:  `YYYY年MM月DD日(曜日) HH: MI:SS` 形式で表示
 - **スティッキーヘッダー**: スクロールしても画面上部に固定表示
 - **レスポンシブデザイン**: グラデーション背景とシャドウ効果
 
@@ -225,8 +296,8 @@ food_ticket/
 // CurrentTime.tsx の実装例
 const formatTime = (date: Date): string => {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date. getMonth() + 1).padStart(2, '0');
+  const day = String(date. getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
@@ -238,7 +309,7 @@ const formatTime = (date: Date): string => {
 };
 ```
 
-### 2025-12-28: 管理画面の実装
+### 2025-12-28:  管理画面の実装
 
 #### Step 1: API基盤の共通化
 - **実装内容**
@@ -265,7 +336,7 @@ export const apiClient = axios.create({
   - `backend/app/main.py` に管理画面ルーターを登録
 
 - **API一覧**
-  - カテゴリCRUD:  GET/POST/PUT/DELETE `/admin/categories`
+  - カテゴリCRUD:   GET/POST/PUT/DELETE `/admin/categories`
   - 商品CRUD: GET/POST/PUT/DELETE `/admin/products`
   - 画像アップロード: POST `/admin/upload-image`
 
@@ -293,7 +364,7 @@ export const apiClient = axios.create({
 
 #### Step 5: カテゴリ管理画面
 - **実装内容**
-  - `frontend/src/components/admin/CategoryManager.tsx` を作成
+  - `frontend/src/components/admin/CategoryManager. tsx` を作成
   - カテゴリ一覧表示、追加、編集、削除機能を実装
   - インライン編集可能なUI
 
@@ -395,7 +466,7 @@ useEffect(() => {
     "category_name": "定食",
     "price": 850,
     "stock": 50,
-    "image_url":  "/images/hamburg.jpg"
+    "image_url":   "/images/hamburg.jpg"
   }
 ]
 ```
@@ -425,7 +496,7 @@ useEffect(() => {
 ```json
 {
   "status": "success",
-  "order_id":  1
+  "order_id":   1
 }
 ```
 
@@ -435,7 +506,7 @@ useEffect(() => {
 
 **`GET /admin/categories`** - カテゴリ一覧取得
 
-レスポンス:
+レスポンス: 
 ```json
 [
   {
@@ -456,7 +527,7 @@ useEffect(() => {
 
 **`PUT /admin/categories/{category_id}`** - カテゴリ更新
 
-リクエスト:
+リクエスト: 
 ```json
 {
   "category_name": "ソフトドリンク"
@@ -477,7 +548,7 @@ useEffect(() => {
 
 **`GET /admin/products`** - 商品一覧取得
 
-クエリパラメータ: 
+クエリパラメータ:  
 - `category_id` (optional): カテゴリIDでフィルター
 
 レスポンス:
@@ -504,14 +575,14 @@ useEffect(() => {
   "product_name": "コーラ",
   "category_id": 2,
   "standard_price": 350,
-  "image_url": "/images/cola.jpg",
+  "image_url":  "/images/cola.jpg",
   "initial_stock": 99
 }
 ```
 
 **`PUT /admin/products/{product_id}`** - 商品更新
 
-リクエスト: 
+リクエスト:  
 ```json
 {
   "product_name": "コカコーラ",
@@ -521,11 +592,70 @@ useEffect(() => {
 
 **`DELETE /admin/products/{product_id}`** - 商品削除
 
+レスポンス: 
+```json
+{
+  "status":   "success",
+  "message":   "商品を削除しました"
+}
+```
+
+#### 在庫管理
+
+**`GET /admin/inventories`** - 在庫一覧取得
+
+クエリパラメータ: 
+- `store_id` (required): 店舗ID
+- `category_id` (optional): カテゴリIDでフィルター
+
+レスポンス:
+```json
+[
+  {
+    "inventory_id": 10001,
+    "store_id": 1,
+    "product_id": 1,
+    "product_name": "ハンバーグ定食",
+    "category_name": "定食",
+    "standard_price": 850,
+    "image_url": "/images/hamburg. jpg",
+    "current_stock": 50,
+    "is_on_sale": true
+  }
+]
+```
+
+**`PUT /admin/inventories/{store_id}/{product_id}/stock`** - 在庫数更新
+
+リクエスト:
+```json
+{
+  "current_stock": 30
+}
+```
+
 レスポンス:
 ```json
 {
-  "status":  "success",
-  "message":  "商品を削除しました"
+  "status": "success",
+  "message": "在庫数を更新しました"
+}
+```
+
+**`PATCH /admin/inventories/{store_id}/{product_id}/sale-status`** - 販売状態切り替え
+
+リクエスト:
+```json
+{
+  "is_on_sale": false
+}
+```
+
+レスポンス:
+```json
+{
+  "status": "success",
+  "message": "販売停止に変更しました"
 }
 ```
 
@@ -656,7 +786,7 @@ CREATE TABLE order_details (
 );
 ```
 
-ER図については `/backend/ER図.md` を参照してください。
+ER図については `/backend/ER図. md` を参照してください。
 
 ---
 
@@ -693,7 +823,7 @@ python -m scripts.seed
 
 **カテゴリ:**
 - 定食（ID: 1）
-- サイドメニュー（ID: 2）
+- サイドメニュー（ID:  2）
 - 単品（ID: 3）
 
 **商品:**
@@ -706,7 +836,7 @@ python -m scripts.seed
 
 ## 🐛 トラブルシューティング
 
-### エラー:  `Form data requires "python-multipart" to be installed`
+### エラー:   `Form data requires "python-multipart" to be installed`
 
 **原因:** 画像アップロード機能に必要なパッケージが不足
 
@@ -717,7 +847,7 @@ pip install python-multipart
 uvicorn app.main:app --reload
 ```
 
-### エラー: 画像アップロード時に `FileNotFoundError`
+### エラー:  画像アップロード時に `FileNotFoundError`
 
 **原因:** 画像保存ディレクトリが存在しない
 
@@ -749,18 +879,20 @@ origins = [
 
 ## 📝 今後の開発予定
 
-### 優先度:  高
-- [ ] **在庫管理画面** - リアルタイム在庫確認、販売中/停止の切り替え
-  - 店舗別の在庫一覧表示
-  - 在庫の増減機能
-  - 販売状態の一括切り替え
+### 優先度:   高
+- [x] **在庫管理画面** - リアルタイム在庫確認、販売中/停止の切り替え ✅ 完了（2026-01-02）
+  - [x] 店舗別の在庫一覧表示
+  - [x] 在庫の増減機能（ダイレクト編集 + クイック調整ボタン）
+  - [x] 販売状態の切り替え（販売中/販売停止）
+  - [x] カテゴリ別フィルタリング
+  - [x] 在庫アラート表示（在庫10以下で警告）
   
 - [ ] **売上分析ダッシュボード** - 日別/月別売上グラフ、人気商品ランキング
   - Chart.jsやRechartsを使った売上グラフ
   - 時間帯別の売上分析
   - 顧客属性別の購入傾向
 
-### 優先度: 中
+### 優先度:  中
 - [ ] **注文履歴画面** - 過去の注文一覧・詳細表示
   - 日付範囲での絞り込み
   - 注文詳細の表示
