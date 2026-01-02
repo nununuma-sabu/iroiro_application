@@ -351,8 +351,14 @@ def get_inventories(
             models.StoreInventory.current_stock,
             models.StoreInventory.is_on_sale,
         )
-        .join(models.Product)
-        .join(models.Category)
+        .select_from(models.StoreInventory)  # ⬅️ 明示的にFROMを指定
+        .join(
+            models.Product,
+            models.StoreInventory.product_id == models.Product.product_id,
+        )  # ⬅️ 明示的なON句
+        .join(
+            models.Category, models.Product.category_id == models.Category.category_id
+        )  # ⬅️ 明示的なON句
         .filter(models.StoreInventory.store_id == store_id)
     )
 
