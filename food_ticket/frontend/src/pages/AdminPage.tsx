@@ -2,6 +2,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom';
 import CategoryManager from '../components/admin/CategoryManager';
 import ProductManager from '../components/admin/ProductManager';
 import InventoryManager from '../components/admin/InventoryManager';
+import SalesAnalytics from '../components/admin/SalesAnalytics';
 
 function AdminPage() {
   const location = useLocation();
@@ -34,8 +35,8 @@ function AdminPage() {
               to="/admin/products"
               className={`block px-4 py-2 rounded-lg transition-colors ${
                 location.pathname === '/admin/products'
-                  ?  'bg-blue-600 text-white'
-                  :  'text-gray-700 hover:bg-gray-100'
+                  ?   'bg-blue-600 text-white'
+                  :   'text-gray-700 hover:bg-gray-100'
               }`}
             >
               🍔 商品管理
@@ -57,7 +58,7 @@ function AdminPage() {
               className={`block px-4 py-2 rounded-lg transition-colors ${
                 location.pathname === '/admin/analytics'
                   ? 'bg-blue-600 text-white'
-                  : 'text-gray-700 hover:bg-gray-100'
+                  : 'text-gray-700 hover: bg-gray-100'
               }`}
             >
               📊 売上分析
@@ -80,7 +81,7 @@ function AdminPage() {
             <Route path="categories" element={<CategoryManager />} />
             <Route path="products" element={<ProductManager />} />
             <Route path="inventory" element={<InventoryManager />} />
-            <Route path="analytics" element={<div>売上分析（未実装）</div>} />
+            <Route path="analytics" element={<SalesAnalytics />} />
             <Route path="/" element={<div className="text-center text-gray-500 mt-20">左のメニューから選択してください</div>} />
           </Routes>
         </main>
