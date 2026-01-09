@@ -182,7 +182,7 @@ food_ticket/
 │   │   ├── create_db.py       # DB作成スクリプト
 │   │   └── seed.py            # 初期データ投入
 │   ├── requirements.txt       # Python依存パッケージ
-│   └── vending_machine. db     # SQLiteデータベース（自動生成）
+│   └── vending_machine.db     # SQLiteデータベース（自動生成）
 │
 └── frontend/
     ├── src/
@@ -292,7 +292,7 @@ const trends = await adminApi.getSalesTrends(1, 30);
 
 #### データベース連携
 - `orders` テーブルと `order_details` テーブルから集計
-- SQLAlchemyの集計関数（`func. sum`, `func.count`）を使用
+- SQLAlchemyの集計関数（`func.sum`, `func.count`）を使用
 - JOIN句で商品名・カテゴリ名も同時取得
 - 日付フィルタリング機能で期間指定が可能
 
@@ -304,12 +304,12 @@ const trends = await adminApi.getSalesTrends(1, 30);
     - `GET /admin/inventories` - 在庫一覧取得（店舗ID・カテゴリIDでフィルター可能）
     - `PUT /admin/inventories/{store_id}/{product_id}/stock` - 在庫数更新
     - `PATCH /admin/inventories/{store_id}/{product_id}/sale-status` - 販売状態切り替え
-  - `backend/app/schemas/admin. py` に在庫関連のスキーマを追加
+  - `backend/app/schemas/admin.py` に在庫関連のスキーマを追加
     - `InventoryUpdateStock` - 在庫数更新用スキーマ
     - `InventoryUpdateSaleStatus` - 販売状態更新用スキーマ
 
 - **フロントエンドAPI関数の追加**
-  - `frontend/src/api/admin. ts` に在庫管理API関数を実装
+  - `frontend/src/api/admin.ts` に在庫管理API関数を実装
     - `getInventories()` - 在庫一覧取得
     - `updateInventoryStock()` - 在庫数更新
     - `updateInventorySaleStatus()` - 販売状態切り替え
@@ -349,7 +349,7 @@ const inventories = await adminApi.getInventories(1, categoryId);
 await adminApi.updateInventoryStock(storeId, productId, 50);
 
 // 販売状態を切り替え
-await adminApi. updateInventorySaleStatus(storeId, productId, false);
+await adminApi.updateInventorySaleStatus(storeId, productId, false);
 ```
 
 #### データベース連携
@@ -376,8 +376,8 @@ await adminApi. updateInventorySaleStatus(storeId, productId, false);
 // CurrentTime.tsx の実装例
 const formatTime = (date: Date): string => {
   const year = date.getFullYear();
-  const month = String(date. getMonth() + 1).padStart(2, '0');
-  const day = String(date. getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
   const hours = String(date.getHours()).padStart(2, '0');
   const minutes = String(date.getMinutes()).padStart(2, '0');
   const seconds = String(date.getSeconds()).padStart(2, '0');
@@ -424,7 +424,7 @@ export const apiClient = axios.create({
 - **実装内容**
   - `frontend/src/App.tsx` をReact Routerで更新
   - `frontend/src/pages/StorePage.tsx` を作成（顧客向けページ）
-  - `frontend/src/pages/AdminPage. tsx` を作成（管理画面レイアウト）
+  - `frontend/src/pages/AdminPage.tsx` を作成（管理画面レイアウト）
 
 ```typescript
 // App.tsx
@@ -444,7 +444,7 @@ export const apiClient = axios.create({
 
 #### Step 5: カテゴリ管理画面
 - **実装内容**
-  - `frontend/src/components/admin/CategoryManager. tsx` を作成
+  - `frontend/src/components/admin/CategoryManager.tsx` を作成
   - カテゴリ一覧表示、追加、編集、削除機能を実装
   - インライン編集可能なUI
 
@@ -546,7 +546,7 @@ useEffect(() => {
     "category_name": "定食",
     "price": 850,
     "stock": 50,
-    "image_url":   "/images/hamburg. jpg"
+    "image_url":   "/images/hamburg.jpg"
   }
 ]
 ```
@@ -640,7 +640,7 @@ useEffect(() => {
     "category_id": 1,
     "category_name": "定食",
     "standard_price": 850,
-    "image_url": "/images/hamburg. jpg",
+    "image_url": "/images/hamburg.jpg",
     "stock": 50,
     "is_on_sale": true
   }
@@ -698,7 +698,7 @@ useEffect(() => {
     "product_name": "ハンバーグ定食",
     "category_name": "定食",
     "standard_price": 850,
-    "image_url": "/images/hamburg. jpg",
+    "image_url": "/images/hamburg.jpg",
     "current_stock": 50,
     "is_on_sale": true
   }
@@ -774,7 +774,7 @@ useEffect(() => {
     "product_id": 1,
     "product_name":  "ハンバーグ定食",
     "category_name": "定食",
-    "image_url": "/images/hamburg. jpg",
+    "image_url": "/images/hamburg.jpg",
     "total_quantity": 85,
     "total_sales": 72250,
     "order_count": 65
@@ -801,7 +801,7 @@ useEffect(() => {
     "date":  "2026-01-02",
     "total_sales": 18700,
     "total_orders":  22,
-    "average_order_value": 850. 00
+    "average_order_value": 850.00
   }
 ]
 ```
@@ -933,7 +933,7 @@ CREATE TABLE order_details (
 );
 ```
 
-ER図については `/backend/ER図. md` を参照してください。
+ER図については `/backend/ER図.md` を参照してください。
 
 ---
 
@@ -1008,7 +1008,7 @@ mkdir -p images
 
 **原因:** 以前の実装では、商品が存在するカテゴリのみ表示していた
 
-**解決済み:** MenuScreen. tsxを更新し、APIから全カテゴリを取得するように変更済み
+**解決済み:** MenuScreen.tsxを更新し、APIから全カテゴリを取得するように変更済み
 
 ### CORS エラーが発生する
 
