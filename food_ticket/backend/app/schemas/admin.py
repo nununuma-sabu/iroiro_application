@@ -110,3 +110,37 @@ class InventoryUpdateSaleStatus(BaseModel):
     """販売状態更新用スキーマ"""
 
     is_on_sale: bool
+
+
+# ==================== 売上分析 ====================
+
+
+class SalesSummaryResponse(BaseModel):
+    """売上サマリーレスポンス"""
+
+    total_sales: int  # 総売上金額
+    total_orders: int  # 総注文件数
+    average_order_value: float  # 平均客単価
+    period_start: Optional[str] = None  # 集計期間開始
+    period_end: Optional[str] = None  # 集計期間終了
+
+
+class PopularProductResponse(BaseModel):
+    """人気商品レスポンス"""
+
+    product_id: int
+    product_name: str
+    category_name: str
+    image_url: Optional[str] = None
+    total_quantity: int  # 販売数
+    total_sales: int  # 売上金額
+    order_count: int  # 注文回数
+
+
+class SalesTrendResponse(BaseModel):
+    """売上推移レスポンス"""
+
+    date: str  # 日付（YYYY-MM-DD）
+    total_sales: int  # その日の総売上
+    total_orders: int  # その日の総注文件数
+    average_order_value: float  # その日の平均客単価
