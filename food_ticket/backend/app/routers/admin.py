@@ -1,6 +1,8 @@
 # app/routers/admin.py
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from sqlalchemy.orm import Session
+from sqlalchemy import func, desc
+from datetime import datetime, timedelta
 from typing import List, Optional
 import shutil
 from pathlib import Path
@@ -433,3 +435,192 @@ def update_inventory_sale_status(
 
     status_text = "販売中" if status_data.is_on_sale else "販売停止"
     return {"status": "success", "message": f"販売状態を {status_text} に変更しました"}
+
+
+# ==================== 売上分析API ====================
+
+
+@router.get("/sales/summary", response_model=admin_schemas.SalesSummaryResponse)
+def get_sales_summary(
+    store_id: int = 1,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    売上サマリーを取得
+
+    Args:
+        store_id: 店舗ID
+        start_date: 集計開始日（YYYY-MM-DD形式、省略時は全期間）
+        end_date:  集計終了日（YYYY-MM-DD形式、省略時は全期間）
+    """
+    query = db.query(
+        func.sum(models.Order.total_amount).label("total_sales"),
+        func.count(models.Order.order_id).label("total_orders"),
+    ).filter(models.Order.store_id == store_id)
+
+    # 日付フィルター
+    if start_date:
+        query = query.filter(models.Order.ordered_at >= start_date)
+    if end_date:
+        # 終了日の23: 59:59まで含める
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.filter(models.Order.ordered_at < end_datetime)
+
+    result = query.first()
+
+    total_sales = result.total_sales or 0
+    total_orders = result.total_orders or 0
+    average_order_value = total_sales / total_orders if total_orders > 0 else 0
+
+    return {
+        "total_sales": total_sales,
+        "total_orders": total_orders,
+        "average_order_value": round(average_order_value, 2),
+        "period_start": start_date,
+        "period_end": end_date,
+    }
+
+
+@router.get(
+    "/sales/popular-products", response_model=List[admin_schemas.PopularProductResponse]
+)
+def get_popular_products(
+    store_id: int = 1,
+    limit: int = 10,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    db: Session = Depends(get_db),
+):
+    """
+    人気商品ランキングを取得
+
+    Args:
+        store_id: 店舗ID
+        limit: 取得件数（デフォルト10件）
+        start_date: 集計開始日（YYYY-MM-DD形式、省略時は全期間）
+        end_date: 集計終了日（YYYY-MM-DD形式、省略時は全期間）
+    """
+    query = (
+        db.query(
+            models.Product.product_id,
+            models.Product.product_name,
+            models.Category.category_name,
+            models.Product.image_url,
+            func.sum(models.OrderDetail.quantity).label("total_quantity"),
+            func.sum(models.OrderDetail.quantity * models.OrderDetail.unit_price).label(
+                "total_sales"
+            ),
+            func.count(func.distinct(models.Order.order_id)).label("order_count"),
+        )
+        .select_from(models.OrderDetail)
+        .join(models.Order, models.OrderDetail.order_id == models.Order.order_id)
+        .join(
+            models.Product, models.OrderDetail.product_id == models.Product.product_id
+        )
+        .join(
+            models.Category, models.Product.category_id == models.Category.category_id
+        )
+        .filter(models.Order.store_id == store_id)
+    )
+
+    # 日付フィルター
+    if start_date:
+        query = query.filter(models.Order.ordered_at >= start_date)
+    if end_date:
+        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
+        query = query.filter(models.Order.ordered_at < end_datetime)
+
+    # グループ化してソート
+    query = (
+        query.group_by(
+            models.Product.product_id,
+            models.Product.product_name,
+            models.Category.category_name,
+            models.Product.image_url,
+        )
+        .order_by(desc("total_quantity"))
+        .limit(limit)
+    )
+
+    products = query.all()
+
+    return [
+        {
+            "product_id": p.product_id,
+            "product_name": p.product_name,
+            "category_name": p.category_name,
+            "image_url": p.image_url,
+            "total_quantity": p.total_quantity or 0,
+            "total_sales": p.total_sales or 0,
+            "order_count": p.order_count or 0,
+        }
+        for p in products
+    ]
+
+
+@router.get("/sales/trends", response_model=List[admin_schemas.SalesTrendResponse])
+def get_sales_trends(
+    store_id: int = 1,
+    days: int = 30,
+    db: Session = Depends(get_db),
+):
+    """
+    売上推移データを取得（日別）
+
+    Args:
+        store_id: 店舗ID
+        days: 過去何日分取得するか（デフォルト30日）
+    """
+    # 今日の日付
+    end_date = datetime.now().date()
+    start_date = end_date - timedelta(days=days - 1)
+
+    # 日別の売上集計
+    query = (
+        db.query(
+            func.date(models.Order.ordered_at).label("date"),
+            func.sum(models.Order.total_amount).label("total_sales"),
+            func.count(models.Order.order_id).label("total_orders"),
+        )
+        .filter(
+            models.Order.store_id == store_id,
+            func.date(models.Order.ordered_at) >= start_date,
+            func.date(models.Order.ordered_at) <= end_date,
+        )
+        .group_by(func.date(models.Order.ordered_at))
+        .order_by(func.date(models.Order.ordered_at))
+    )
+
+    results = query.all()
+
+    # 日付の穴を埋める（注文がない日は0として表示）
+    trends_dict = {str(r.date): r for r in results}
+    filled_trends = []
+
+    current_date = start_date
+    while current_date <= end_date:
+        date_str = str(current_date)
+        if date_str in trends_dict:
+            r = trends_dict[date_str]
+            total_sales = r.total_sales or 0
+            total_orders = r.total_orders or 0
+            average_order_value = total_sales / total_orders if total_orders > 0 else 0
+        else:
+            total_sales = 0
+            total_orders = 0
+            average_order_value = 0
+
+        filled_trends.append(
+            {
+                "date": date_str,
+                "total_sales": total_sales,
+                "total_orders": total_orders,
+                "average_order_value": round(average_order_value, 2),
+            }
+        )
+
+        current_date += timedelta(days=1)
+
+    return filled_trends
