@@ -10,8 +10,9 @@ function StorePage() {
   const [attributeId, setAttributeId] = useState<number | null>(null);
   const [useFaceRecognition, setUseFaceRecognition] = useState(true); // 顔認証を使うか
 
-  // ログアウト処理
+  // ログアウト時にトークンを削除
   const handleLogout = () => {
+    localStorage. removeItem('access_token');  // トークン削除
     setStoreInfo(null);
     setAttributeId(null);
     setUseFaceRecognition(true);

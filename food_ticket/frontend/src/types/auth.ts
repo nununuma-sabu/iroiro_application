@@ -5,7 +5,9 @@ export interface StoreInfo {
   prefecture: string;
 }
 
+// JWTトークンと店舗情報を含む
 export interface LoginResponse {
-  status: string;
-  store_info: StoreInfo;
+  access_token:  string;
+  token_type:  string;
+  store_info:  StoreInfo;
 }

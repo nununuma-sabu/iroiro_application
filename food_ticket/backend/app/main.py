@@ -12,7 +12,7 @@ from app.db.session import get_db
 from app.db import models
 from app.core.security import verify_password, create_access_token
 from app.core.deps import get_current_store
-from app.schemas.auth import Token, StoreLogin
+from app.schemas.auth import Token, StoreLogin, TokenWithStoreInfo
 
 # 管理画面用ルーターをインポート
 from app.routers import admin
@@ -73,7 +73,7 @@ def read_root():
 # 店舗ログインAPI
 
 
-@app.post("/login/store", response_model=Token)
+@app.post("/login/store", response_model=TokenWithStoreInfo)
 def login_store(login_data: StoreLogin, db: Session = Depends(get_db)):
     # 店舗情報を取得
     store = (
@@ -102,7 +102,17 @@ def login_store(login_data: StoreLogin, db: Session = Depends(get_db)):
     # JWTトークンを作成
     access_token = create_access_token(data={"sub": str(store.store_id)})
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # トークンと店舗情報を両方返す
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "store_info": {
+            "id": store.store_id,
+            "name": store.store_name,
+            "prefecture": store.municipality.prefecture.prefecture_name,
+            "municipality": store.municipality.municipality_name,
+        },
+    }
 
 
 # 認証が必要なエンドポイント例
