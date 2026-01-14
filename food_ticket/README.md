@@ -240,6 +240,112 @@ food_ticket/
 
 ## 🔄 開発履歴
 
+### 2026-01-14: FastAPIテストコード実装
+
+#### 実装内容
+
+**テスト環境のセットアップ**
+
+- `backend/tests/conftest.py` を作成
+  - Pytestのfixture設定を実装
+  - インメモリSQLiteデータベースの設定
+  - テスト用データ自動生成機能（seed_test_data）
+  - FastAPIテストクライアントの設定
+- `backend/pytest.ini` を作成
+  - pytestの設定ファイル
+  - テストパス、カバレッジ設定を定義
+- `backend/requirements-test.txt` を作成
+  - テスト用依存パッケージリスト（pytest, pytest-cov など）
+
+**管理APIテスト（test_admin. py）の実装**
+
+- `backend/tests/test_admin.py` を作成
+  - `TestCategoryAPI` クラス
+    - `test_get_categories` - カテゴリ一覧取得のテスト
+    - `test_create_category` - カテゴリ作成のテスト
+  - `TestProductAPI` クラス
+    - `test_get_products` - 商品一覧取得のテスト
+    - `test_create_product` - 商品作成のテスト
+  - `TestInventoryAPI` クラス
+    - `test_get_inventories` - 在庫一覧取得のテスト
+
+**メインAPIテスト（test_main.py）の実装**
+
+- `backend/tests/test_main.py` を作成
+  - `TestRootEndpoint` クラス
+    - `test_read_root` - ヘルスチェックのテスト
+  - `TestStoreLogin` クラス
+    - `test_login_success` - ログイン成功のテスト
+    - `test_login_wrong_password` - パスワード誤りのテスト
+    - `test_login_nonexistent_store` - 存在しない店舗のテスト
+  - `TestGetStoreProducts` クラス
+    - `test_get_products_success` - 商品取得成功のテスト
+    - `test_get_products_empty_store` - 空店舗のテスト
+  - `TestCustomerAttribute` クラス
+    - `test_create_customer_attribute_success` - 顧客属性登録のテスト
+  - `TestCreateOrder` クラス
+    - `test_create_order_success` - 注文作成成功のテスト
+    - `test_create_order_insufficient_stock` - 在庫不足エラーのテスト
+
+**モデルテスト（test_models. py）の実装**
+
+- `backend/tests/test_models.py` を作成
+  - `TestStoreModel` クラス
+    - `test_create_store` - 店舗モデル作成のテスト
+  - `TestProductModel` クラス
+    - `test_create_product_with_category` - カテゴリ付き商品作成のテスト
+  - `TestOrderModel` クラス
+    - `test_create_order_with_details` - 注文・明細作成のテスト
+
+**データベース分離とリファクタリング**
+
+- `backend/app/db/session.py` を修正
+  - 環境変数 `TESTING` による本番/テストDB切り替え機能を追加
+  - `get_db()` 関数を `session. py` に移動（循環インポート解消）
+- `backend/app/main.py` を修正
+  - `get_db` を `app.db. session` からインポートするように変更
+  - 重複していた `get_db` 関数定義を削除
+- `backend/app/routers/admin.py` を修正
+  - 独自の `get_db` 関数を削除
+  - `app.db.session` から `get_db` をインポート
+
+**スキーマ補完**
+
+- `backend/app/schemas/admin.py` に以下を追加
+  - `InventoryUpdateStock` - 在庫数更新用スキーマ
+  - `InventoryUpdateSaleStatus` - 販売状態更新用スキーマ
+  - `SalesSummaryResponse` - 売上サマリー用スキーマ
+  - `PopularProductResponse` - 人気商品用スキーマ
+  - `SalesTrendResponse` - 売上推移用スキーマ
+
+#### テスト実行方法
+
+```bash
+# 全テストを実行
+pytest
+
+# 詳細表示で実行
+pytest -v
+
+# カバレッジレポート付きで実行
+pytest --cov=app --cov-report=html
+```
+
+#### テスト結果
+```code
+✅ 18 passed (100%)
+📈 Coverage: 68%
+⏱️  実行時間: 5.63s
+```
+#### カバレッジ詳細
+- app/main.py: 95%
+- app/core/security.py: 100%
+- app/db/models.py: 100%
+- app/schemas/admin.py: 100%
+- app/routers/admin.py: 35%
+app/routers/admin.pyのカバレッジ向上が今後の課題
+
+
 ### 2026-01-09:  売上分析画面の実装
 
 #### 実装内容
