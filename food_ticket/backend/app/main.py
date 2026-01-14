@@ -7,8 +7,8 @@ from fastapi.middleware.cors import CORSMiddleware
 import datetime
 
 # 整理した各モジュールからインポート
+from app.db.session import get_db
 from app.db import models
-from app.db.session import SessionLocal
 from app.core import security
 
 # 🆕 管理画面用ルーターをインポート
@@ -31,7 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 🆕 管理画面用ルーターを登録
+# 管理画面用ルーターを登録
 app.include_router(admin.router)
 
 
@@ -50,20 +50,11 @@ class OrderCreate(BaseModel):
     take_out_type: str
 
 
-# 🆕 顧客属性登録用スキーマ
+# 顧客属性登録用スキーマ
 class CustomerAttributeCreate(BaseModel):
     store_id: int
     age_group: str
     gender: str
-
-
-# DBセッションをリクエストごとに生成・終了するための依存注入用関数
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
 
 
 # 入力データのバリデーション

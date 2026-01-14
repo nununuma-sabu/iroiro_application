@@ -7,21 +7,12 @@ from typing import List, Optional
 import shutil
 from pathlib import Path
 
-from app.db.session import SessionLocal
+# app.mainからget_dbをインポート
+from app.db.session import get_db
 from app.db import models
 from app.schemas import admin as admin_schemas
 
 router = APIRouter(prefix="/admin", tags=["admin"])
-
-
-# 依存関係:   DBセッション
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
 
 # ==================== カテゴリ管理API ====================
 

@@ -1,6 +1,7 @@
 # app/schemas/admin.py
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, ConfigDict
+from typing import Optional, List
+from datetime import datetime
 
 
 # ==================== カテゴリ ====================
@@ -24,8 +25,7 @@ class CategoryResponse(BaseModel):
     category_id: int
     category_name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 # ==================== 商品 ====================
@@ -38,7 +38,7 @@ class ProductCreate(BaseModel):
     category_id: int
     standard_price: int
     image_url: Optional[str] = None
-    initial_stock: Optional[int] = None  # 初期在庫（在庫も同時作成する場合）
+    initial_stock: Optional[int] = None
 
 
 class ProductUpdate(BaseModel):
@@ -56,16 +56,15 @@ class ProductResponse(BaseModel):
     product_id: int
     product_name: str
     category_id: int
-    category_name: str  # JOIN結果
+    category_name: str
     standard_price: int
     image_url: Optional[str] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductDetailResponse(BaseModel):
-    """商品詳細レスポンス（在庫情報含む）"""
+    """商品詳細レスポンススキーマ"""
 
     product_id: int
     product_name: str
@@ -73,20 +72,19 @@ class ProductDetailResponse(BaseModel):
     category_name: str
     standard_price: int
     image_url: Optional[str] = None
-    stock: Optional[int] = None  # 在庫数
-    is_on_sale: Optional[bool] = None  # 販売中かどうか
+    stock: Optional[int] = None
+    is_on_sale: Optional[bool] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
-# ==================== 在庫管理 ====================
+# ==================== 在庫 ====================
 
 
 class InventoryResponse(BaseModel):
     """在庫レスポンススキーマ"""
 
-    inventory_id: int  # store_id と product_id の組み合わせで一意
+    inventory_id: int
     store_id: int
     product_id: int
     product_name: str
@@ -96,8 +94,14 @@ class InventoryResponse(BaseModel):
     current_stock: int
     is_on_sale: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
+
+
+class InventoryUpdate(BaseModel):
+    """在庫更新用スキーマ（汎用）"""
+
+    current_stock: Optional[int] = None
+    is_on_sale: Optional[bool] = None
 
 
 class InventoryUpdateStock(BaseModel):
@@ -116,31 +120,37 @@ class InventoryUpdateSaleStatus(BaseModel):
 
 
 class SalesSummaryResponse(BaseModel):
-    """売上サマリーレスポンス"""
+    """売上サマリーレスポンススキーマ"""
 
-    total_sales: int  # 総売上金額
-    total_orders: int  # 総注文件数
-    average_order_value: float  # 平均客単価
-    period_start: Optional[str] = None  # 集計期間開始
-    period_end: Optional[str] = None  # 集計期間終了
+    total_sales: int
+    total_orders: int
+    average_order_value: float
+    period_start: Optional[str] = None
+    period_end: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PopularProductResponse(BaseModel):
-    """人気商品レスポンス"""
+    """人気商品レスポンススキーマ"""
 
     product_id: int
     product_name: str
     category_name: str
     image_url: Optional[str] = None
-    total_quantity: int  # 販売数
-    total_sales: int  # 売上金額
-    order_count: int  # 注文回数
+    total_quantity: int
+    total_sales: int
+    order_count: int
+
+    model_config = ConfigDict(from_attributes=True)
 
 
 class SalesTrendResponse(BaseModel):
-    """売上推移レスポンス"""
+    """売上推移レスポンススキーマ"""
 
-    date: str  # 日付（YYYY-MM-DD）
-    total_sales: int  # その日の総売上
-    total_orders: int  # その日の総注文件数
-    average_order_value: float  # その日の平均客単価
+    date: str
+    total_sales: int
+    total_orders: int
+    average_order_value: float
+
+    model_config = ConfigDict(from_attributes=True)

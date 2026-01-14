@@ -16,3 +16,6 @@ env/
 # image
 *.png
 *.jpg
+
+# coverage
+*.coverage
