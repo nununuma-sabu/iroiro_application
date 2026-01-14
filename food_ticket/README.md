@@ -168,27 +168,41 @@ food_ticket/
 ├── backend/
 │   ├── app/
 │   │   ├── core/              # セキュリティ、設定
-│   │   │   └── security.py
+│   │   │   └── security. py
 │   │   ├── db/                # データベース関連
+│   │   │   ├── base.py        # Base定義
 │   │   │   ├── models.py      # テーブル定義
 │   │   │   └── session.py     # DB接続
 │   │   ├── routers/           # APIルーター
 │   │   │   ├── __init__.py
 │   │   │   └── admin.py       # 管理画面API
 │   │   ├── schemas/           # Pydanticスキーマ
-│   │   │   └── admin.py       # 管理画面スキーマ
+│   │   │   ├── __init__.py
+│   │   │   ├── admin.py       # 管理画面スキーマ
+│   │   │   └── order.py       # 注文スキーマ
 │   │   └── main.py            # FastAPIアプリ本体
+│   ├── tests/                 # ✅ テストコード
+│   │   ├── __init__.py
+│   │   ├── conftest.py        # テスト共通設定（fixture定義）
+│   │   ├── test_admin.py      # 管理API テスト
+│   │   ├── test_main.py       # メインAPI テスト
+│   │   ├── test_models.py     # データモデルテスト
+│   │   └── test_debug.py      # デバッグ用テスト
 │   ├── scripts/
-│   │   ├── create_db.py       # DB作成スクリプト
+│   │   ├── create_db. py       # DB作成スクリプト
 │   │   └── seed.py            # 初期データ投入
-│   ├── requirements.txt       # Python依存パッケージ
+│   ├── htmlcov/               # ✅ カバレッジレポート（自動生成）
+│   │   └── index.html         # カバレッジHTML
+│   ├── requirements. txt       # Python依存パッケージ
+│   ├── requirements-test.txt  # ✅ テスト用依存パッケージ
+│   ├── pytest.ini             # ✅ pytest設定ファイル
 │   └── vending_machine.db     # SQLiteデータベース（自動生成）
 │
 └── frontend/
     ├── src/
     │   ├── api/               # API通信
     │   │   ├── client.ts      # 共通axiosクライアント
-    │   │   ├── admin.ts       # 管理画面API関数
+    │   │   ├── admin. ts       # 管理画面API関数
     │   │   ├── store.ts       # 店舗API関数
     │   │   └── order.ts       # 注文API関数
     │   ├── components/        # Reactコンポーネント
@@ -199,13 +213,13 @@ food_ticket/
     │   │   │   ├── ProductManager.css
     │   │   │   ├── InventoryManager.tsx
     │   │   │   ├── InventoryManager.css
-    │   │   │   ├── SalesAnalytics.tsx
+    │   │   │   ├── SalesAnalytics. tsx
     │   │   │   └── SalesAnalytics.css
     │   │   ├── CurrentTime.tsx      # 現在時刻表示コンポーネント
     │   │   ├── CurrentTime.css
     │   │   ├── Header.tsx           # 共通ヘッダー
     │   │   ├── LoginScreen.tsx
-    │   │   ├── FaceRecognitionScreen.tsx
+    │   │   ├── FaceRecognitionScreen. tsx
     │   │   ├── CustomerAttributeScreen.tsx
     │   │   └── MenuScreen.tsx
     │   ├── pages/             # ページコンポーネント
