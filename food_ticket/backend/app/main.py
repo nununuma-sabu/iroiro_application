@@ -1,17 +1,20 @@
+# -*- coding: utf-8 -*-
 # app/main.py
 from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List
-from fastapi.middleware.cors import CORSMiddleware
 import datetime
 
-# 整理した各モジュールからインポート
+# JWT関連のインポート
 from app.db.session import get_db
 from app.db import models
-from app.core import security
+from app.core.security import verify_password, create_access_token
+from app.core.deps import get_current_store
+from app.schemas.auth import Token, StoreLogin
 
-# 🆕 管理画面用ルーターをインポート
+# 管理画面用ルーターをインポート
 from app.routers import admin
 
 app = FastAPI(title="食券機シミュレーター API")
@@ -35,6 +38,9 @@ app.add_middleware(
 app.include_router(admin.router)
 
 
+# スキーマ定義
+
+
 class OrderItem(BaseModel):
     product_id: int
     quantity: int
@@ -50,17 +56,13 @@ class OrderCreate(BaseModel):
     take_out_type: str
 
 
-# 顧客属性登録用スキーマ
 class CustomerAttributeCreate(BaseModel):
     store_id: int
     age_group: str
     gender: str
 
 
-# 入力データのバリデーション
-class StoreLogin(BaseModel):
-    store_id: int
-    password: str
+# ルートエンドポイント
 
 
 @app.get("/")
@@ -68,42 +70,60 @@ def read_root():
     return {"message": "Vending Machine API is running"}
 
 
-@app.post("/login/store")
+# 店舗ログインAPI
+
+
+@app.post("/login/store", response_model=Token)
 def login_store(login_data: StoreLogin, db: Session = Depends(get_db)):
-    """
-    店舗IDとパスワードで認証し、店舗情報を返すAPI
-    """
+    # 店舗情報を取得
     store = (
         db.query(models.Store)
+        .join(models.Municipality)
+        .join(models.Prefecture)
         .filter(models.Store.store_id == login_data.store_id)
         .first()
     )
 
-    if not store or not security.verify_password(
-        login_data.password, store.password_hash
-    ):
+    if not store:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="店舗IDまたはパスワードが正しくありません",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # パスワード検証
+    if not verify_password(login_data.password, store.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="店舗IDまたはパスワードが正しくありません",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    # JWTトークンを作成
+    access_token = create_access_token(data={"sub": str(store.store_id)})
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# 認証が必要なエンドポイント例
+
+
+@app.get("/stores/me")
+def get_my_store_info(current_store: models.Store = Depends(get_current_store)):
     return {
-        "status": "success",
-        "store_info": {
-            "id": store.store_id,
-            "name": store.store_name,
-            "prefecture": store.municipality.prefecture.prefecture_name,
-            "municipality": store.municipality.municipality_name,
-        },
+        "store_id": current_store.store_id,
+        "store_name": current_store.store_name,
+        "address": current_store.address_detail,
+        "municipality": current_store.municipality.municipality_name,
+        "prefecture": current_store.municipality.prefecture.prefecture_name,
     }
+
+
+# 商品取得API
 
 
 @app.get("/stores/{store_id}/products")
 def get_store_products(store_id: int, db: Session = Depends(get_db)):
-    """
-    指定された店舗で「販売中」かつ「在庫がある」商品一覧を取得する
-    """
     items = (
         db.query(models.StoreInventory)
         .join(models.Product)
@@ -125,23 +145,21 @@ def get_store_products(store_id: int, db: Session = Depends(get_db)):
                 "category_name": item.product.category.category_name,
                 "price": item.product.standard_price,
                 "stock": item.current_stock,
-                "image_url": item.product.image_url,  # 🆕 追加
+                "image_url": item.product.image_url,
             }
         )
 
     return results
 
 
-# 🆕 顧客属性登録API
+# 顧客属性登録API
+
+
 @app.post("/customer-attributes")
 def create_customer_attribute(
     attribute_data: CustomerAttributeCreate, db: Session = Depends(get_db)
 ):
-    """
-    顧客の年齢層・性別を登録し、attribute_idを返す
-    """
     try:
-        # 新しい顧客属性レコードを作成
         new_attribute = models.CustomerAttribute(
             store_id=attribute_data.store_id,
             age_group=attribute_data.age_group,
@@ -165,13 +183,12 @@ def create_customer_attribute(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+# 注文作成API
+
+
 @app.post("/orders")
 def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
-    """
-    注文を受け付け、在庫を減らし、注文履歴を保存する
-    """
     try:
-        # 1. 注文(Order)テーブルの作成
         new_order = models.Order(
             store_id=order_data.store_id,
             attribute_id=order_data.attribute_id,
@@ -182,7 +199,6 @@ def create_order(order_data: OrderCreate, db: Session = Depends(get_db)):
         db.add(new_order)
         db.flush()
 
-        # 2. 注文明細(OrderDetail)の作成と在庫(Inventory)の更新
         for item in order_data.items:
             inventory = (
                 db.query(models.StoreInventory)

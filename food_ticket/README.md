@@ -168,20 +168,23 @@ food_ticket/
 ├── backend/
 │   ├── app/
 │   │   ├── core/              # セキュリティ、設定
-│   │   │   └── security. py
+│   │   │   ├── config.py      # ✅ 新規:   アプリケーション設定管理
+│   │   │   ├── security.py    # パスワードハッシュ化、JWT認証
+│   │   │   └── deps.py        # ✅ 新規:  認証依存関数
 │   │   ├── db/                # データベース関連
 │   │   │   ├── base.py        # Base定義
 │   │   │   ├── models.py      # テーブル定義
 │   │   │   └── session.py     # DB接続
 │   │   ├── routers/           # APIルーター
 │   │   │   ├── __init__.py
-│   │   │   └── admin.py       # 管理画面API
+│   │   │   └── admin.py       # 管理画面API（✅ 全エンドポイント認証化）
 │   │   ├── schemas/           # Pydanticスキーマ
 │   │   │   ├── __init__.py
 │   │   │   ├── admin.py       # 管理画面スキーマ
+│   │   │   ├── auth.py        # ✅ 新規:  認証スキーマ
 │   │   │   └── order.py       # 注文スキーマ
-│   │   └── main.py            # FastAPIアプリ本体
-│   ├── tests/                 # ✅ テストコード
+│   │   └── main.py            # FastAPIアプリ本体（✅ JWT認証対応）
+│   ├── tests/                 # テストコード
 │   │   ├── __init__.py
 │   │   ├── conftest.py        # テスト共通設定（fixture定義）
 │   │   ├── test_admin.py      # 管理API テスト
@@ -189,20 +192,24 @@ food_ticket/
 │   │   ├── test_models.py     # データモデルテスト
 │   │   └── test_debug.py      # デバッグ用テスト
 │   ├── scripts/
-│   │   ├── create_db. py       # DB作成スクリプト
-│   │   └── seed.py            # 初期データ投入
-│   ├── htmlcov/               # ✅ カバレッジレポート（自動生成）
+│   │   ├── create_db.py       # DB作成スクリプト
+│   │   └── seed. py            # 初期データ投入
+│   ├── htmlcov/               # カバレッジレポート（自動生成）
 │   │   └── index.html         # カバレッジHTML
-│   ├── requirements. txt       # Python依存パッケージ
-│   ├── requirements-test.txt  # ✅ テスト用依存パッケージ
-│   ├── pytest.ini             # ✅ pytest設定ファイル
+│   ├── public/                # ✅ 新規:  静的ファイル
+│   │   └── images/            # 商品画像保存先
+│   ├── . env                   # ✅ 新規:  環境変数（秘密鍵管理）
+│   ├── .gitignore             # Git除外設定
+│   ├── requirements.txt       # Python依存パッケージ（✅ JWT追加）
+│   ├── requirements-test.txt  # テスト用依存パッケージ
+│   ├── pytest.ini             # pytest設定ファイル
 │   └── vending_machine.db     # SQLiteデータベース（自動生成）
 │
 └── frontend/
     ├── src/
     │   ├── api/               # API通信
     │   │   ├── client.ts      # 共通axiosクライアント
-    │   │   ├── admin. ts       # 管理画面API関数
+    │   │   ├── admin.ts       # 管理画面API関数
     │   │   ├── store.ts       # 店舗API関数
     │   │   └── order.ts       # 注文API関数
     │   ├── components/        # Reactコンポーネント
@@ -213,13 +220,13 @@ food_ticket/
     │   │   │   ├── ProductManager.css
     │   │   │   ├── InventoryManager.tsx
     │   │   │   ├── InventoryManager.css
-    │   │   │   ├── SalesAnalytics. tsx
+    │   │   │   ├── SalesAnalytics.tsx
     │   │   │   └── SalesAnalytics.css
     │   │   ├── CurrentTime.tsx      # 現在時刻表示コンポーネント
     │   │   ├── CurrentTime.css
     │   │   ├── Header.tsx           # 共通ヘッダー
     │   │   ├── LoginScreen.tsx
-    │   │   ├── FaceRecognitionScreen. tsx
+    │   │   ├── FaceRecognitionScreen.tsx
     │   │   ├── CustomerAttributeScreen.tsx
     │   │   └── MenuScreen.tsx
     │   ├── pages/             # ページコンポーネント
@@ -239,6 +246,90 @@ food_ticket/
 ---
 
 ## 🔄 開発履歴
+
+### 2026-01-14:  JWT認証・セキュリティ強化
+
+#### 実装内容
+
+**JWT (JSON Web Token) 認証システムの実装**
+
+- `backend/app/core/config.py` を作成
+  - `Settings` クラスで環境変数を管理
+  - SECRET_KEY、ALGORITHM、ACCESS_TOKEN_EXPIRE_MINUTES を定義
+  - pydantic-settings による型安全な設定管理
+  
+- `backend/app/core/security.py` を拡張
+  - `create_access_token()` - JWTトークン生成関数
+  - `verify_token()` - JWTトークン検証関数
+  - 既存のパスワードハッシュ化機能を維持
+  
+- `backend/app/core/deps.py` を作成（新規）
+  - `get_current_store()` - 認証依存関数
+  - HTTPベアラートークンからログイン中の店舗を取得
+  - 認証失敗時に401エラーを返す
+
+**認証スキーマの追加**
+
+- `backend/app/schemas/auth.py` を作成（新規）
+  - `Token` - トークンレスポンス用スキーマ
+  - `TokenData` - トークンペイロード用スキーマ
+  - `StoreLogin` - ログインリクエスト用スキーマ
+
+**ログインエンドポイントのJWT対応**
+
+- `backend/app/main.py` を修正
+  - `/login/store` エンドポイントをJWT対応に変更
+  - ログイン成功時にアクセストークンを発行
+  - レスポンス形式を `Token` スキーマに変更
+  - `/stores/me` エンドポイントを追加（認証テスト用）
+
+**管理画面API全体の認証保護**
+
+- `backend/app/routers/admin.py` を修正
+  - 全エンドポイントに `Depends(get_current_store)` を追加
+  - カテゴリ管理API（5エンドポイント）
+  - 商品管理API（5エンドポイント）
+  - 商品画像アップロードAPI（1エンドポイント）
+  - 在庫管理API（4エンドポイント）
+  - 売上分析API（3エンドポイント）
+  - **合計18エンドポイント全てに認証を適用**
+
+**環境変数管理**
+
+- `backend/.env` を作成
+  - SECRET_KEY（JWT署名用秘密鍵）
+  - ALGORITHM（HS256）
+  - ACCESS_TOKEN_EXPIRE_MINUTES（30分）
+  
+- `backend/.gitignore` に `.env` を追加
+  - 秘密鍵の漏洩を防止
+
+**依存パッケージの追加**
+
+- `backend/requirements.txt` に追加
+  - `python-jose[cryptography]` - JWT生成・検証
+  - `python-multipart` - ファイルアップロード対応
+  - `pydantic-settings` - 環境変数管理
+
+#### 機能詳細
+
+**JWT認証フロー**
+
+1. **ログイン**
+   ```bash
+   POST /login/store
+   {
+     "store_id": 1,
+     "password": "password123"
+   }
+   ```
+   レスポンス
+   ```json
+   {
+     "access_token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+     "token_type": "bearer"
+   }
+   ```
 
 ### 2026-01-14: FastAPIテストコード実装
 

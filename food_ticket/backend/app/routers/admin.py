@@ -1,5 +1,6 @@
+# -*- coding: utf-8 -*-
 # app/routers/admin.py
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from datetime import datetime, timedelta
@@ -7,43 +8,46 @@ from typing import List, Optional
 import shutil
 from pathlib import Path
 
-# app.mainからget_dbをインポート
 from app.db.session import get_db
 from app.db import models
 from app.schemas import admin as admin_schemas
+from app.core.deps import get_current_store
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
-# ==================== カテゴリ管理API ====================
+
+# カテゴリ管理API
 
 
 @router.get("/categories", response_model=List[admin_schemas.CategoryResponse])
-def get_categories(db: Session = Depends(get_db)):
-    """全カテゴリを取得"""
+def get_categories(
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """全カテゴリを取得（認証必須）"""
     categories = db.query(models.Category).all()
     return categories
 
 
 @router.post("/categories", response_model=admin_schemas.CategoryResponse)
 def create_category(
-    category_data: admin_schemas.CategoryCreate, db: Session = Depends(get_db)
+    category: admin_schemas.CategoryCreate,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """新しいカテゴリを追加"""
-    # 重複チェック
+    """新しいカテゴリを作成（認証必須）"""
     existing = (
         db.query(models.Category)
-        .filter(models.Category.category_name == category_data.category_name)
+        .filter(models.Category.category_name == category.category_name)
         .first()
     )
 
     if existing:
         raise HTTPException(
-            status_code=400,
-            detail=f"カテゴリ '{category_data.category_name}' は既に存在します",
+            status_code=400, detail="同じ名前のカテゴリが既に存在します"
         )
 
-    new_category = models.Category(category_name=category_data.category_name)
-
+    new_category = models.Category(category_name=category.category_name)
     db.add(new_category)
     db.commit()
     db.refresh(new_category)
@@ -54,20 +58,24 @@ def create_category(
 @router.put("/categories/{category_id}", response_model=admin_schemas.CategoryResponse)
 def update_category(
     category_id: int,
-    category_data: admin_schemas.CategoryUpdate,
+    category: admin_schemas.CategoryCreate,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """カテゴリ名を更新"""
-    category = db.query(models.Category).filter_by(category_id=category_id).first()
+    """カテゴリ名を更新（認証必須）"""
+    target = (
+        db.query(models.Category)
+        .filter(models.Category.category_id == category_id)
+        .first()
+    )
 
-    if not category:
+    if not target:
         raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
 
-    # 重複チェック（自分以外）
     existing = (
         db.query(models.Category)
         .filter(
-            models.Category.category_name == category_data.category_name,
+            models.Category.category_name == category.category_name,
             models.Category.category_id != category_id,
         )
         .first()
@@ -75,122 +83,121 @@ def update_category(
 
     if existing:
         raise HTTPException(
-            status_code=400,
-            detail=f"カテゴリ '{category_data.category_name}' は既に存在します",
+            status_code=400, detail="同じ名前のカテゴリが既に存在します"
         )
 
-    category.category_name = category_data.category_name
+    target.category_name = category.category_name
     db.commit()
-    db.refresh(category)
+    db.refresh(target)
 
-    return category
+    return target
 
 
 @router.delete("/categories/{category_id}")
-def delete_category(category_id: int, db: Session = Depends(get_db)):
-    """カテゴリを削除"""
-    category = db.query(models.Category).filter_by(category_id=category_id).first()
+def delete_category(
+    category_id: int,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """カテゴリを削除（認証必須）"""
+    target = (
+        db.query(models.Category)
+        .filter(models.Category.category_id == category_id)
+        .first()
+    )
 
-    if not category:
+    if not target:
         raise HTTPException(status_code=404, detail="カテゴリが見つかりません")
 
-    # このカテゴリを使用している商品があるかチェック
-    products_count = db.query(models.Product).filter_by(category_id=category_id).count()
+    product_count = (
+        db.query(models.Product)
+        .filter(models.Product.category_id == category_id)
+        .count()
+    )
 
-    if products_count > 0:
+    if product_count > 0:
         raise HTTPException(
             status_code=400,
-            detail=f"このカテゴリは {products_count} 個の商品で使用されているため削除できません",
+            detail=f"このカテゴリには{product_count}件の商品が紐づいているため削除できません",
         )
 
-    db.delete(category)
+    db.delete(target)
     db.commit()
 
-    return {"status": "success", "message": "カテゴリを削除しました"}
+    return {"message": "カテゴリを削除しました"}
 
 
-# ==================== 商品管理API ====================
+# 商品管理API
 
 
-@router.get("/products", response_model=List[admin_schemas.ProductDetailResponse])
-def get_all_products(category_id: int = None, db: Session = Depends(get_db)):
-    """全商品を取得（カテゴリでフィルター可能）"""
+@router.get("/products", response_model=List[admin_schemas.ProductResponse])
+def get_all_products(
+    store_id: int = 1,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """全商品を取得（在庫情報含む）（認証必須）"""
     query = (
         db.query(
-            models.Product.product_id,
-            models.Product.product_name,
-            models.Product.category_id,
+            models.Product,
             models.Category.category_name,
-            models.Product.standard_price,
-            models.Product.image_url,
-            models.StoreInventory.current_stock.label("stock"),
+            models.StoreInventory.current_stock,
             models.StoreInventory.is_on_sale,
         )
-        .join(models.Category)
+        .join(
+            models.Category, models.Product.category_id == models.Category.category_id
+        )
         .outerjoin(
             models.StoreInventory,
             (models.StoreInventory.product_id == models.Product.product_id)
-            & (models.StoreInventory.store_id == 1),  # デフォルト店舗
+            & (models.StoreInventory.store_id == store_id),
         )
     )
 
-    if category_id:
-        query = query.filter(models.Product.category_id == category_id)
-
     products = query.all()
 
-    return [
-        {
-            "product_id": p.product_id,
-            "product_name": p.product_name,
-            "category_id": p.category_id,
-            "category_name": p.category_name,
-            "standard_price": p.standard_price,
-            "image_url": p.image_url,
-            "stock": p.stock,
-            "is_on_sale": p.is_on_sale,
-        }
-        for p in products
-    ]
+    results = []
+    for product, category_name, stock, is_on_sale in products:
+        results.append(
+            {
+                "product_id": product.product_id,
+                "product_name": product.product_name,
+                "category_id": product.category_id,
+                "category_name": category_name,
+                "standard_price": product.standard_price,
+                "image_url": product.image_url,
+                "stock": stock if stock is not None else 0,
+                "is_on_sale": is_on_sale if is_on_sale is not None else False,
+            }
+        )
+
+    return results
 
 
 @router.post("/products", response_model=admin_schemas.ProductResponse)
 def create_product(
-    product_data: admin_schemas.ProductCreate, db: Session = Depends(get_db)
+    product: admin_schemas.ProductCreate,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """新しい商品を追加"""
-    # カテゴリの存在確認
+    """新しい商品を作成（認証必須）"""
     category = (
         db.query(models.Category)
-        .filter_by(category_id=product_data.category_id)
+        .filter(models.Category.category_id == product.category_id)
         .first()
     )
-    if not category:
-        raise HTTPException(
-            status_code=404, detail="指定されたカテゴリが見つかりません"
-        )
 
-    # 商品作成
+    if not category:
+        raise HTTPException(status_code=400, detail="指定されたカテゴリが存在しません")
+
     new_product = models.Product(
-        product_name=product_data.product_name,
-        category_id=product_data.category_id,
-        standard_price=product_data.standard_price,
-        image_url=product_data.image_url,
+        product_name=product.product_name,
+        category_id=product.category_id,
+        standard_price=product.standard_price,
+        image_url=product.image_url,
     )
 
     db.add(new_product)
-    db.flush()
-
-    # 在庫情報も作成（initial_stockが指定されている場合）
-    if product_data.initial_stock is not None:
-        inventory = models.StoreInventory(
-            store_id=1,  # デフォルト店舗
-            product_id=new_product.product_id,
-            current_stock=product_data.initial_stock,
-            is_on_sale=True,
-        )
-        db.add(inventory)
-
     db.commit()
     db.refresh(new_product)
 
@@ -201,276 +208,313 @@ def create_product(
         "category_name": category.category_name,
         "standard_price": new_product.standard_price,
         "image_url": new_product.image_url,
+        "stock": 0,
+        "is_on_sale": False,
     }
 
 
 @router.put("/products/{product_id}", response_model=admin_schemas.ProductResponse)
 def update_product(
     product_id: int,
-    product_data: admin_schemas.ProductUpdate,
+    product: admin_schemas.ProductUpdate,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """商品情報を更新"""
-    product = db.query(models.Product).filter_by(product_id=product_id).first()
+    """商品情報を更新（認証必須）"""
+    target = (
+        db.query(models.Product).filter(models.Product.product_id == product_id).first()
+    )
 
-    if not product:
+    if not target:
         raise HTTPException(status_code=404, detail="商品が見つかりません")
 
-    # カテゴリ変更時の存在確認
-    if product_data.category_id is not None:
+    if product.category_id:
         category = (
             db.query(models.Category)
-            .filter_by(category_id=product_data.category_id)
+            .filter(models.Category.category_id == product.category_id)
             .first()
         )
         if not category:
             raise HTTPException(
-                status_code=404, detail="指定されたカテゴリが見つかりません"
+                status_code=400, detail="指定されたカテゴリが存在しません"
             )
-        product.category_id = product_data.category_id
+        target.category_id = product.category_id
 
-    # その他のフィールド更新
-    if product_data.product_name is not None:
-        product.product_name = product_data.product_name
-    if product_data.standard_price is not None:
-        product.standard_price = product_data.standard_price
-    if product_data.image_url is not None:
-        product.image_url = product_data.image_url
+    if product.product_name:
+        target.product_name = product.product_name
+    if product.standard_price is not None:
+        target.standard_price = product.standard_price
+    if product.image_url:
+        target.image_url = product.image_url
 
     db.commit()
-    db.refresh(product)
+    db.refresh(target)
 
-    # カテゴリ名を取得
     category = (
-        db.query(models.Category).filter_by(category_id=product.category_id).first()
+        db.query(models.Category)
+        .filter(models.Category.category_id == target.category_id)
+        .first()
+    )
+
+    inventory = (
+        db.query(models.StoreInventory)
+        .filter(models.StoreInventory.product_id == product_id)
+        .first()
     )
 
     return {
-        "product_id": product.product_id,
-        "product_name": product.product_name,
-        "category_id": product.category_id,
+        "product_id": target.product_id,
+        "product_name": target.product_name,
+        "category_id": target.category_id,
         "category_name": category.category_name,
-        "standard_price": product.standard_price,
-        "image_url": product.image_url,
+        "standard_price": target.standard_price,
+        "image_url": target.image_url,
+        "stock": inventory.current_stock if inventory else 0,
+        "is_on_sale": inventory.is_on_sale if inventory else False,
     }
 
 
 @router.delete("/products/{product_id}")
-def delete_product(product_id: int, db: Session = Depends(get_db)):
-    """商品を削除"""
-    product = db.query(models.Product).filter_by(product_id=product_id).first()
+def delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """商品を削除（認証必須）"""
+    target = (
+        db.query(models.Product).filter(models.Product.product_id == product_id).first()
+    )
 
-    if not product:
+    if not target:
         raise HTTPException(status_code=404, detail="商品が見つかりません")
 
-    # 在庫情報も削除
-    db.query(models.StoreInventory).filter_by(product_id=product_id).delete()
+    inventory_count = (
+        db.query(models.StoreInventory)
+        .filter(models.StoreInventory.product_id == product_id)
+        .count()
+    )
 
-    # 注文履歴がある場合は警告（削除は許可）
-    order_count = db.query(models.OrderDetail).filter_by(product_id=product_id).count()
-
-    db.delete(product)
-    db.commit()
-
-    message = "商品を削除しました"
-    if order_count > 0:
-        message += f"（注文履歴 {order_count} 件が存在します）"
-
-    return {"status": "success", "message": message}
-
-
-# ==================== 画像アップロードAPI ====================
-
-
-@router.post("/upload-image")
-async def upload_image(file: UploadFile = File(...)):
-    """商品画像をアップロード"""
-    # ファイル形式の検証
-    allowed_extensions = {".jpg", ".jpeg", ".png", ".webp"}
-    file_ext = Path(file.filename).suffix.lower()
-
-    if file_ext not in allowed_extensions:
+    if inventory_count > 0:
         raise HTTPException(
             status_code=400,
-            detail="画像ファイル(jpg, jpeg, png, webp)のみアップロード可能です",
+            detail="この商品には在庫が紐づいているため削除できません",
         )
 
-    # 保存先ディレクトリ(絶対パスで指定)
-    import os
+    db.delete(target)
+    db.commit()
 
-    # バックエンドの親ディレクトリ -> food_ticket -> frontend -> public -> images
-    current_dir = Path(__file__).resolve().parent  # app/routers
-    backend_dir = current_dir.parent.parent  # backend
-    project_root = backend_dir.parent  # food_ticket
-    upload_dir = project_root / "frontend" / "public" / "images"
-
-    # ディレクトリが存在しない場合は作成
-    upload_dir.mkdir(parents=True, exist_ok=True)
-
-    # 元のファイル名をそのまま使用
-    filename = file.filename
-    file_path = upload_dir / filename
-
-    # ファイル保存
-    try:
-        with open(file_path, "wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"ファイル保存に失敗しました:  {str(e)}"
-        )
-
-    return {"status": "success", "image_url": f"/images/{filename}"}
+    return {"message": "商品を削除しました"}
 
 
-# ==================== 在庫管理API ====================
+# 商品画像アップロードAPI
+
+
+@router.post("/products/upload-image")
+async def upload_product_image(
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """商品画像をアップロード（認証必須）"""
+    UPLOAD_DIR = Path("public/images")
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+    # ファイル名をそのまま使用（タイムスタンプなし）
+    file_path = UPLOAD_DIR / file.filename
+
+    with file_path.open("wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    return {"image_url": f"/images/{file.filename}"}
+
+
+# 在庫管理API
 
 
 @router.get("/inventories", response_model=List[admin_schemas.InventoryResponse])
 def get_inventories(
-    store_id: int = 1,
-    category_id: Optional[int] = None,
+    store_id: int,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """在庫一覧を取得（店舗IDとカテゴリでフィルター可能）"""
+    """指定店舗の在庫一覧を取得（認証必須）"""
     query = (
-        db.query(
-            models.StoreInventory.store_id,
-            models.StoreInventory.product_id,
-            models.Product.product_name,
-            models.Category.category_name,
-            models.Product.standard_price,
-            models.Product.image_url,
-            models.StoreInventory.current_stock,
-            models.StoreInventory.is_on_sale,
-        )
-        .select_from(models.StoreInventory)  # ⬅️ 明示的にFROMを指定
+        db.query(models.StoreInventory)
         .join(
             models.Product,
             models.StoreInventory.product_id == models.Product.product_id,
-        )  # ⬅️ 明示的なON句
+        )
         .join(
             models.Category, models.Product.category_id == models.Category.category_id
-        )  # ⬅️ 明示的なON句
+        )
         .filter(models.StoreInventory.store_id == store_id)
     )
 
-    if category_id:
-        query = query.filter(models.Product.category_id == category_id)
-
     inventories = query.all()
 
-    return [
-        {
-            "inventory_id": i.store_id * 10000 + i.product_id,  # 擬似的なID
-            "store_id": i.store_id,
-            "product_id": i.product_id,
-            "product_name": i.product_name,
-            "category_name": i.category_name,
-            "standard_price": i.standard_price,
-            "image_url": i.image_url,
-            "current_stock": i.current_stock,
-            "is_on_sale": i.is_on_sale,
-        }
-        for i in inventories
-    ]
+    results = []
+    for inv in inventories:
+        results.append(
+            {
+                "store_id": inv.store_id,
+                "product_id": inv.product_id,
+                "product_name": inv.product.product_name,
+                "category_name": inv.product.category.category_name,
+                "standard_price": inv.product.standard_price,
+                "image_url": inv.product.image_url,
+                "current_stock": inv.current_stock,
+                "is_on_sale": inv.is_on_sale,
+            }
+        )
+
+    return results
+
+
+@router.post("/inventories", response_model=admin_schemas.InventoryResponse)
+def create_inventory(
+    inventory: admin_schemas.InventoryCreate,
+    db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
+):
+    """新しい在庫を登録（認証必須）"""
+    existing = (
+        db.query(models.StoreInventory)
+        .filter(
+            models.StoreInventory.store_id == inventory.store_id,
+            models.StoreInventory.product_id == inventory.product_id,
+        )
+        .first()
+    )
+
+    if existing:
+        raise HTTPException(
+            status_code=400, detail="この店舗・商品の在庫は既に登録されています"
+        )
+
+    product = (
+        db.query(models.Product)
+        .filter(models.Product.product_id == inventory.product_id)
+        .first()
+    )
+    if not product:
+        raise HTTPException(status_code=400, detail="指定された商品が存在しません")
+
+    new_inventory = models.StoreInventory(
+        store_id=inventory.store_id,
+        product_id=inventory.product_id,
+        current_stock=inventory.current_stock,
+        is_on_sale=inventory.is_on_sale,
+    )
+
+    db.add(new_inventory)
+    db.commit()
+    db.refresh(new_inventory)
+
+    return {
+        "store_id": new_inventory.store_id,
+        "product_id": new_inventory.product_id,
+        "product_name": product.product_name,
+        "category_name": product.category.category_name,
+        "standard_price": product.standard_price,
+        "image_url": product.image_url,
+        "current_stock": new_inventory.current_stock,
+        "is_on_sale": new_inventory.is_on_sale,
+    }
 
 
 @router.put("/inventories/{store_id}/{product_id}/stock")
 def update_inventory_stock(
     store_id: int,
     product_id: int,
-    stock_data: admin_schemas.InventoryUpdateStock,
+    update_data: admin_schemas.InventoryUpdateStock,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """在庫数を更新"""
+    """在庫数を更新（認証必須）"""
     inventory = (
         db.query(models.StoreInventory)
-        .filter_by(store_id=store_id, product_id=product_id)
+        .filter(
+            models.StoreInventory.store_id == store_id,
+            models.StoreInventory.product_id == product_id,
+        )
         .first()
     )
 
     if not inventory:
-        raise HTTPException(status_code=404, detail="在庫情報が見つかりません")
+        raise HTTPException(status_code=404, detail="在庫が見つかりません")
 
-    if stock_data.current_stock < 0:
-        raise HTTPException(status_code=400, detail="在庫数は0以上である必要があります")
-
-    inventory.current_stock = stock_data.current_stock
+    inventory.current_stock = update_data.current_stock
     db.commit()
-    db.refresh(inventory)
 
-    return {"status": "success", "message": "在庫数を更新しました"}
+    return {"message": "在庫数を更新しました", "current_stock": inventory.current_stock}
 
 
-@router.patch("/inventories/{store_id}/{product_id}/sale-status")
+@router.put("/inventories/{store_id}/{product_id}/sale-status")
 def update_inventory_sale_status(
     store_id: int,
     product_id: int,
-    status_data: admin_schemas.InventoryUpdateSaleStatus,
+    update_data: admin_schemas.InventoryUpdateSaleStatus,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """販売状態を切り替え"""
+    """販売状態を更新（認証必須）"""
     inventory = (
         db.query(models.StoreInventory)
-        .filter_by(store_id=store_id, product_id=product_id)
+        .filter(
+            models.StoreInventory.store_id == store_id,
+            models.StoreInventory.product_id == product_id,
+        )
         .first()
     )
 
     if not inventory:
-        raise HTTPException(status_code=404, detail="在庫情報が見つかりません")
+        raise HTTPException(status_code=404, detail="在庫が見つかりません")
 
-    inventory.is_on_sale = status_data.is_on_sale
+    inventory.is_on_sale = update_data.is_on_sale
     db.commit()
-    db.refresh(inventory)
 
-    status_text = "販売中" if status_data.is_on_sale else "販売停止"
-    return {"status": "success", "message": f"販売状態を {status_text} に変更しました"}
+    return {"message": "販売状態を更新しました", "is_on_sale": inventory.is_on_sale}
 
 
-# ==================== 売上分析API ====================
+# 売上分析API
 
 
 @router.get("/sales/summary", response_model=admin_schemas.SalesSummaryResponse)
 def get_sales_summary(
-    store_id: int = 1,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
+    store_id: int,
+    days: int = 30,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """
-    売上サマリーを取得
+    """売上サマリーを取得（認証必須）"""
+    target_date = datetime.now() - timedelta(days=days)
 
-    Args:
-        store_id: 店舗ID
-        start_date: 集計開始日（YYYY-MM-DD形式、省略時は全期間）
-        end_date:  集計終了日（YYYY-MM-DD形式、省略時は全期間）
-    """
-    query = db.query(
-        func.sum(models.Order.total_amount).label("total_sales"),
-        func.count(models.Order.order_id).label("total_orders"),
-    ).filter(models.Order.store_id == store_id)
+    total_sales = (
+        db.query(func.sum(models.Order.total_amount))
+        .filter(
+            models.Order.store_id == store_id,
+            models.Order.ordered_at >= target_date,
+        )
+        .scalar()
+        or 0
+    )
 
-    # 日付フィルター
-    if start_date:
-        query = query.filter(models.Order.ordered_at >= start_date)
-    if end_date:
-        # 終了日の23: 59:59まで含める
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        query = query.filter(models.Order.ordered_at < end_datetime)
+    total_orders = (
+        db.query(func.count(models.Order.order_id))
+        .filter(
+            models.Order.store_id == store_id,
+            models.Order.ordered_at >= target_date,
+        )
+        .scalar()
+        or 0
+    )
 
-    result = query.first()
-
-    total_sales = result.total_sales or 0
-    total_orders = result.total_orders or 0
-    average_order_value = total_sales / total_orders if total_orders > 0 else 0
+    avg_order_amount = int(total_sales / total_orders) if total_orders > 0 else 0
 
     return {
         "total_sales": total_sales,
         "total_orders": total_orders,
-        "average_order_value": round(average_order_value, 2),
-        "period_start": start_date,
-        "period_end": end_date,
+        "avg_order_amount": avg_order_amount,
     }
 
 
@@ -478,22 +522,13 @@ def get_sales_summary(
     "/sales/popular-products", response_model=List[admin_schemas.PopularProductResponse]
 )
 def get_popular_products(
-    store_id: int = 1,
+    store_id: int,
     limit: int = 10,
-    start_date: Optional[str] = None,
-    end_date: Optional[str] = None,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """
-    人気商品ランキングを取得
-
-    Args:
-        store_id: 店舗ID
-        limit: 取得件数（デフォルト10件）
-        start_date: 集計開始日（YYYY-MM-DD形式、省略時は全期間）
-        end_date: 集計終了日（YYYY-MM-DD形式、省略時は全期間）
-    """
-    query = (
+    """人気商品ランキングを取得（認証必須）"""
+    popular = (
         db.query(
             models.Product.product_id,
             models.Product.product_name,
@@ -503,29 +538,18 @@ def get_popular_products(
             func.sum(models.OrderDetail.quantity * models.OrderDetail.unit_price).label(
                 "total_sales"
             ),
-            func.count(func.distinct(models.Order.order_id)).label("order_count"),
+            func.count(models.Order.order_id.distinct()).label("order_count"),
         )
-        .select_from(models.OrderDetail)
-        .join(models.Order, models.OrderDetail.order_id == models.Order.order_id)
         .join(
-            models.Product, models.OrderDetail.product_id == models.Product.product_id
+            models.OrderDetail,
+            models.Product.product_id == models.OrderDetail.product_id,
         )
+        .join(models.Order, models.OrderDetail.order_id == models.Order.order_id)
         .join(
             models.Category, models.Product.category_id == models.Category.category_id
         )
         .filter(models.Order.store_id == store_id)
-    )
-
-    # 日付フィルター
-    if start_date:
-        query = query.filter(models.Order.ordered_at >= start_date)
-    if end_date:
-        end_datetime = datetime.strptime(end_date, "%Y-%m-%d") + timedelta(days=1)
-        query = query.filter(models.Order.ordered_at < end_datetime)
-
-    # グループ化してソート
-    query = (
-        query.group_by(
+        .group_by(
             models.Product.product_id,
             models.Product.product_name,
             models.Category.category_name,
@@ -533,85 +557,59 @@ def get_popular_products(
         )
         .order_by(desc("total_quantity"))
         .limit(limit)
+        .all()
     )
 
-    products = query.all()
+    results = []
+    for item in popular:
+        results.append(
+            {
+                "product_id": item.product_id,
+                "product_name": item.product_name,
+                "category_name": item.category_name,
+                "image_url": item.image_url,
+                "total_quantity": item.total_quantity,
+                "total_sales": item.total_sales,
+                "order_count": item.order_count,
+            }
+        )
 
-    return [
-        {
-            "product_id": p.product_id,
-            "product_name": p.product_name,
-            "category_name": p.category_name,
-            "image_url": p.image_url,
-            "total_quantity": p.total_quantity or 0,
-            "total_sales": p.total_sales or 0,
-            "order_count": p.order_count or 0,
-        }
-        for p in products
-    ]
+    return results
 
 
 @router.get("/sales/trends", response_model=List[admin_schemas.SalesTrendResponse])
 def get_sales_trends(
-    store_id: int = 1,
+    store_id: int,
     days: int = 30,
     db: Session = Depends(get_db),
+    current_store: models.Store = Depends(get_current_store),
 ):
-    """
-    売上推移データを取得（日別）
+    """日別売上推移を取得（認証必須）"""
+    target_date = datetime.now() - timedelta(days=days)
 
-    Args:
-        store_id: 店舗ID
-        days: 過去何日分取得するか（デフォルト30日）
-    """
-    # 今日の日付
-    end_date = datetime.now().date()
-    start_date = end_date - timedelta(days=days - 1)
-
-    # 日別の売上集計
-    query = (
+    trends = (
         db.query(
             func.date(models.Order.ordered_at).label("date"),
             func.sum(models.Order.total_amount).label("total_sales"),
-            func.count(models.Order.order_id).label("total_orders"),
+            func.count(models.Order.order_id).label("order_count"),
         )
         .filter(
             models.Order.store_id == store_id,
-            func.date(models.Order.ordered_at) >= start_date,
-            func.date(models.Order.ordered_at) <= end_date,
+            models.Order.ordered_at >= target_date,
         )
         .group_by(func.date(models.Order.ordered_at))
-        .order_by(func.date(models.Order.ordered_at))
+        .order_by("date")
+        .all()
     )
 
-    results = query.all()
-
-    # 日付の穴を埋める（注文がない日は0として表示）
-    trends_dict = {str(r.date): r for r in results}
-    filled_trends = []
-
-    current_date = start_date
-    while current_date <= end_date:
-        date_str = str(current_date)
-        if date_str in trends_dict:
-            r = trends_dict[date_str]
-            total_sales = r.total_sales or 0
-            total_orders = r.total_orders or 0
-            average_order_value = total_sales / total_orders if total_orders > 0 else 0
-        else:
-            total_sales = 0
-            total_orders = 0
-            average_order_value = 0
-
-        filled_trends.append(
+    results = []
+    for trend in trends:
+        results.append(
             {
-                "date": date_str,
-                "total_sales": total_sales,
-                "total_orders": total_orders,
-                "average_order_value": round(average_order_value, 2),
+                "date": trend.date.isoformat(),
+                "total_sales": trend.total_sales,
+                "order_count": trend.order_count,
             }
         )
 
-        current_date += timedelta(days=1)
-
-    return filled_trends
+    return results
