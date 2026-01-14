@@ -124,7 +124,7 @@ function SalesAnalytics() {
           <div className="card-icon">💰</div>
           <div className="card-content">
             <h3>総売上</h3>
-            <p className="card-value">¥{summary?.total_sales. toLocaleString() || 0}</p>
+            <p className="card-value">¥{(summary?.total_sales ??  0).toLocaleString()}</p>
           </div>
         </div>
 
@@ -132,7 +132,7 @@ function SalesAnalytics() {
           <div className="card-icon">📦</div>
           <div className="card-content">
             <h3>注文件数</h3>
-            <p className="card-value">{summary?.total_orders. toLocaleString() || 0}件</p>
+            <p className="card-value">¥{(summary?.total_orders ?? 0).toLocaleString()}件</p>
           </div>
         </div>
 
@@ -140,7 +140,7 @@ function SalesAnalytics() {
           <div className="card-icon">📈</div>
           <div className="card-content">
             <h3>平均客単価</h3>
-            <p className="card-value">¥{summary?.average_order_value. toLocaleString() || 0}</p>
+            <p className="card-value">¥{(summary?.average_order_value ?? 0).toLocaleString()}</p> 
           </div>
         </div>
       </div>

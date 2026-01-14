@@ -606,7 +606,7 @@ def get_sales_trends(
     for trend in trends:
         results.append(
             {
-                "date": trend.date.isoformat(),
+                "date": trend.date,
                 "total_sales": trend.total_sales,
                 "order_count": trend.order_count,
             }
