@@ -6,8 +6,8 @@ const CurrentTime = () => {
 
   useEffect(() => {
     const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
+      setCurrentTime(new Date()); // 1分ごとに更新したい
+    }, 60000);
 
     return () => clearInterval(timer);
   }, []);
