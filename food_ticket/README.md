@@ -1152,9 +1152,8 @@ CREATE TABLE order_details (
     FOREIGN KEY (product_id) REFERENCES products(product_id)
 );
 ```
-
-ER図については `/backend/ER図.md` を参照してください。
-
+### ER図
+![ER図](docs/image/ER図.drawio.png)
 ---
 
 ## 🔧 開発用コマンド
