@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { loginStore } from '../api/auth';
 import type { StoreInfo } from '../types/auth';
+import toast from 'react-hot-toast'; // alert→トースト対応で追加
 
 interface LoginScreenProps {
   onLoginSuccess: (info: StoreInfo) => void;
@@ -23,11 +24,17 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLoginSuccess }) => {
       
       // JWTトークンをlocalStorageに保存
       localStorage.setItem('access_token', response.access_token);
+
+      // ★ログイン成功の通知
+      toast.success(`${response.store_info.name} としてログインしました！`);
       
       // 店舗情報を親コンポーネントに渡す
       onLoginSuccess(response.store_info);
-    } catch (err:  any) {
-      setError(err.response?.data?.detail || 'ログインに失敗しました');
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || 'ログインに失敗しました';
+      setError(errorMessage);
+      // ★エラーの通知
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }

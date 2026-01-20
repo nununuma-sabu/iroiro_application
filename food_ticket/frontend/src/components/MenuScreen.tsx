@@ -3,6 +3,7 @@ import { getStoreProducts, getAllCategories, type Category } from '../api/store'
 import { createOrder } from '../api/order';
 import type { Product } from '../types/store';
 import type { OrderCreate } from '../types/order';
+import toast from 'react-hot-toast'; // alert→トースト対応で追加
 
 interface MenuScreenProps {
   storeId: number;
@@ -75,6 +76,11 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
       }
       return [...prev, { product, quantity: 1 }];
     });
+    // ★カートに入れた時のフィードバック
+    toast.success(`${product.product_name} を追加しました`, {
+      icon: '🛒',
+      duration: 1000, // 短めに表示
+    });
   };
 
   const removeFromCart = (productId: number) => {
@@ -95,6 +101,7 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
 
   const clearAllCart = () => {
     if (window.confirm('カートをすべて空にしますか？')) setCart([]);
+    toast('カートを空にしました', { icon: '🗑️' }); // ★追加
   };
 
   const getItemQuantity = (productId: number): number => {
@@ -112,6 +119,8 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     }
 
     setOrdering(true);
+    // ★注文中のローディングトースト
+    const loadingToast = toast.loading('注文を送信しています...');
 
     try {
       const orderData: OrderCreate = {
@@ -129,7 +138,13 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
 
       const response = await createOrder(orderData);
 
-      alert(`注文が完了しました！\n注文番号: ${response.order_id}`);
+      // ★alertからtoast.successへ
+      toast.dismiss(loadingToast); // ローディングを消す
+      toast.success(`注文が完了しました！\n注文番号: ${response.order_id}`, {
+        duration: 5000, // 大事な通知なので長めに
+        icon: '🍱',
+      });
+
       setCart([]);
 
       const updatedProducts = await getStoreProducts(storeId);
@@ -137,7 +152,10 @@ const MenuScreen: React.FC<MenuScreenProps> = ({ storeId, attributeId }) => {
     } catch (error:  any) {
       console.error('Order failed:', error);
       const errorMessage = error.response?.data?.detail || '注文に失敗しました。もう一度お試しください。';
-      alert(`エラー: ${errorMessage}`);
+      
+      // ★alertからtoast.errorへ
+      toast.dismiss(loadingToast);
+      toast.error(`エラー: ${errorMessage}`);
     } finally {
       setOrdering(false);
     }
