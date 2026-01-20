@@ -56,6 +56,7 @@
 - **React Router** - ルーティング
 - **Axios** - HTTP通信
 - **Tailwind CSS** - スタイリング
+- **react-hot-toast** (トースト通知によるユーザーフィードバック)
 - **Recharts** - グラフ描画ライブラリ
 
 ---
