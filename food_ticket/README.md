@@ -133,7 +133,7 @@ npm run dev
 ![商品選択](docs/image/注文画面イメージ.png)
 5. 「注文を確定する」ボタンで注文完了
 ![注文確認](docs/image/注文確認.png)
-![注文確定](docs/image/注文確定.png)
+![注文確定](docs/image/注文確定.png?v=2)
 
 ### 管理画面
 
