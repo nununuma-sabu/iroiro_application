@@ -124,6 +124,8 @@ npm run dev
    - **店舗ID**: `1`
    - **パスワード**: `password123`
 ![ログイン画面](docs/image/ログイン画面.png)
+![ログイン成功](docs/image/ログイン成功トースト.png)
+![ログイン失敗](docs/image/ログイン失敗トースト.png)
 3. 顔認証画面でカメラを起動、または「スキップ」をクリック
 ![顔認証画面](docs/image/顔認証.png)
 ![顔認証結果](docs/image/顔認証結果.png)
