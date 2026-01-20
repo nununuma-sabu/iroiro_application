@@ -255,7 +255,9 @@ food_ticket/
 ---
 
 ## 🔄 開発履歴
-
+<details>
+   <summary>クリックで開く</summary>
+   
 ### 2026-01-14:  JWT認証・セキュリティ強化
 
 #### 実装内容
@@ -700,7 +702,7 @@ useEffect(() => {
   fetchData();
 }, [storeId]);
 ```
-
+</details>
 ---
 
 ## 🔌 API仕様
