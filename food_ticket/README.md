@@ -713,6 +713,8 @@ useEffect(() => {
 ---
 
 ## 🔌 API仕様
+<details>
+    <summary>クリックで開く</summary>
 
 ### 顧客向けAPI
 
@@ -1050,7 +1052,7 @@ useEffect(() => {
   "image_url": "/images/1735380123_product.jpg"
 }
 ```
-
+</details>
 詳細は `http://127.0.0.1:8000/docs` のSwagger UIを参照してください。
 
 ---
